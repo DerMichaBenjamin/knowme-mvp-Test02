@@ -62,6 +62,7 @@ export default function Page() {
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [playerName, setPlayerName] = useState("");
+  const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
   const [averagePercent, setAveragePercent] = useState<number | null>(null);
   const [currentPercent, setCurrentPercent] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
@@ -246,23 +247,44 @@ export default function Page() {
     }
   };
 
-  const beginQuiz = () => {
-    setStep(0);
-    setScore(0);
-    setScreen("quiz");
-  };
+const beginQuiz = () => {
+  setStep(0);
+  setScore(0);
+  setSelectedAnswer(null);
+  setScreen("quiz");
+};
 
-  const answerQuestion = async (value: boolean) => {
-    const correct = questions[step].answer === true;
-    const nextScore = score + (value === correct ? 1 : 0);
-    setScore(nextScore);
+const answerQuestion = async () => {
+  if (selectedAnswer === null) return;
 
-    if (step < questions.length - 1) {
-      setStep((prev) => prev + 1);
-      return;
-    }
+  const correct = questions[step].answer === true;
+  const nextScore = score + (selectedAnswer === correct ? 1 : 0);
+  setScore(nextScore);
 
-    const percent = Math.round((nextScore / questions.length) * 100);
+  if (step < questions.length - 1) {
+    setStep((prev) => prev + 1);
+    setSelectedAnswer(null);
+    return;
+  }
+
+  const percent = Math.round((nextScore / questions.length) * 100);
+  setCurrentPercent(percent);
+
+  if (supabase && quizId) {
+    await supabase.from("quiz_results").insert({
+      quiz_id: quizId,
+      player_name: playerName.trim(),
+      score: nextScore,
+      total: questions.length,
+      percent,
+    });
+
+    await refreshAveragePercent(quizId);
+  }
+
+  setSelectedAnswer(null);
+  setScreen("result");
+};
     setCurrentPercent(percent);
 
     if (supabase && quizId) {
@@ -280,11 +302,12 @@ export default function Page() {
     setScreen("result");
   };
 
-  const replayQuiz = () => {
-    setStep(0);
-    setScore(0);
-    setScreen("play_intro");
-  };
+const replayQuiz = () => {
+  setStep(0);
+  setScore(0);
+  setSelectedAnswer(null);
+  setScreen("play_intro");
+};
 
   const comparisonText = useMemo(() => {
     if (currentPercent === null || averagePercent === null) return "Noch kein Vergleich verfügbar.";
@@ -383,19 +406,41 @@ export default function Page() {
         )}
 
         {screen === "quiz" && (
-          <div>
-            <div style={{ marginBottom: 12, color: "#cbd5e1", fontSize: 18 }}>Frage {step + 1} / {questions.length}</div>
-            <div style={progressTrackStyle}>
-              <div style={{ ...progressBarStyle, width: `${((step + 1) / questions.length) * 100}%` }} />
-            </div>
-            <h2 style={h2Style}>{questions[step].text}</h2>
-            <div style={rowStyle}>
-              <button onClick={() => answerQuestion(true)} style={btnPrimary}>Wahr</button>
-              <button onClick={() => answerQuestion(false)} style={btnGhost}>Falsch</button>
-            </div>
-          </div>
-        )}
+  <div>
+    <div style={{ marginBottom: 12, color: "#cbd5e1", fontSize: 18 }}>
+      Frage {step + 1} / {questions.length}
+    </div>
+    <div style={progressTrackStyle}>
+      <div style={{ ...progressBarStyle, width: `${((step + 1) / questions.length) * 100}%` }} />
+    </div>
+    <h2 style={h2Style}>{questions[step].text}</h2>
 
+    <div style={rowStyle}>
+      <button
+        onClick={() => setSelectedAnswer(true)}
+        style={selectedAnswer === true ? btnPrimary : btnGhost}
+      >
+        Wahr
+      </button>
+      <button
+        onClick={() => setSelectedAnswer(false)}
+        style={selectedAnswer === false ? btnPrimary : btnGhost}
+      >
+        Falsch
+      </button>
+    </div>
+
+    <div style={{ ...rowStyle, marginTop: 14 }}>
+      <button
+        onClick={answerQuestion}
+        disabled={selectedAnswer === null}
+        style={{ ...btnPrimary, opacity: selectedAnswer === null ? 0.45 : 1 }}
+      >
+        Weiter
+      </button>
+    </div>
+  </div>
+)}
         {screen === "result" && (
           <div>
             <div style={smallOverlineStyle}>Ergebnis</div>
