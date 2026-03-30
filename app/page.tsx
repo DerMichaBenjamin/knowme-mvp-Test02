@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 type Question = {
@@ -14,13 +14,23 @@ type QuizInsert = {
   question_count: number;
 };
 
+type ResultEntry = {
+  player_name: string;
+  score: number;
+  total: number;
+  percent: number;
+};
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export default function Page() {
-  const [screen, setScreen] = useState<"welcome" | "create" | "share" | "play" | "result">("welcome");
+  const [screen, setScreen] = useState<
+    "welcome" | "create" | "share" | "play" | "result"
+  >("welcome");
+
   const [creatorName, setCreatorName] = useState("");
   const [quizTitle, setQuizTitle] = useState("Wie gut kennst du ...?");
   const [shareUrl, setShareUrl] = useState("");
@@ -38,6 +48,8 @@ export default function Page() {
   const [score, setScore] = useState(0);
 
   const [currentPercent, setCurrentPercent] = useState<number | null>(null);
+  const [leaderboard, setLeaderboard] = useState<ResultEntry[]>([]);
+  const [playerRank, setPlayerRank] = useState<number | null>(null);
 
   useEffect(() => {
     const clean = creatorName.trim();
@@ -129,6 +141,37 @@ export default function Page() {
     setScreen("share");
   };
 
+  const loadLeaderboard = async (id: string, currentPlayer?: string, currentPlayerPercent?: number) => {
+    const { data, error } = await supabase
+      .from("quiz_results")
+      .select("player_name, score, total, percent")
+      .eq("quiz_id", id)
+      .order("percent", { ascending: false })
+      .order("score", { ascending: false });
+
+    if (error || !data) {
+      setLeaderboard([]);
+      setPlayerRank(null);
+      return;
+    }
+
+    const rows = data as ResultEntry[];
+    setLeaderboard(rows.slice(0, 10));
+
+    if (currentPlayer && typeof currentPlayerPercent === "number") {
+      const rank =
+        rows.findIndex(
+          (r) =>
+            r.player_name === currentPlayer &&
+            Number(r.percent) === currentPlayerPercent
+        ) + 1;
+
+      setPlayerRank(rank > 0 ? rank : null);
+    } else {
+      setPlayerRank(null);
+    }
+  };
+
   const answer = async (val: boolean) => {
     const correct = questions[step].answer;
     const newScore = score + (val === correct ? 1 : 0);
@@ -145,17 +188,27 @@ export default function Page() {
     const finalQuizId = quizId || shareUrl.split("q=")[1] || "";
 
     if (finalQuizId) {
-      await supabase.from("quiz_results").insert({
+      const { error } = await supabase.from("quiz_results").insert({
         quiz_id: finalQuizId,
         player_name: playerName || "Anonymous",
         score: newScore,
         total: questions.length,
         percent,
       });
+
+      if (!error) {
+        await loadLeaderboard(finalQuizId, playerName || "Anonymous", percent);
+      }
     }
 
     setScreen("result");
   };
+
+  const leaderboardText = useMemo(() => {
+    if (!leaderboard.length) return "Noch keine Ergebnisse vorhanden.";
+    if (!playerRank) return "";
+    return `Du bist Platz ${playerRank} von ${leaderboard.length >= 10 ? "mindestens 10" : leaderboard.length}.`;
+  }, [leaderboard, playerRank]);
 
   return (
     <main
@@ -169,8 +222,24 @@ export default function Page() {
     >
       {screen === "welcome" && (
         <>
-          <h1>Wie gut kennen dich deine Freunde?</h1>
-          <button onClick={() => setScreen("create")}>Quiz erstellen</button>
+          <h1 style={{ fontSize: 42, marginBottom: 16 }}>
+            Wie gut kennen dich deine Freunde?
+          </h1>
+          <button
+            onClick={() => setScreen("create")}
+            style={{
+              fontSize: 28,
+              padding: "18px 28px",
+              borderRadius: 14,
+              border: 0,
+              background: "white",
+              color: "#0f172a",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Quiz erstellen
+          </button>
         </>
       )}
 
@@ -287,7 +356,14 @@ export default function Page() {
               style={{ display: "block", marginBottom: 12, padding: 10, width: "100%", maxWidth: 500 }}
             />
 
-            <button onClick={() => setScreen("play")} disabled={!playerName.trim()}>
+            <button
+              onClick={() => {
+                setStep(0);
+                setScore(0);
+                setScreen("play");
+              }}
+              disabled={!playerName.trim()}
+            >
               Test spielen
             </button>
           </div>
@@ -309,6 +385,12 @@ export default function Page() {
         <>
           <h1>{currentPercent}%</h1>
 
+          {playerRank && (
+            <p style={{ fontSize: 22, marginBottom: 16 }}>
+              {leaderboardText}
+            </p>
+          )}
+
           <button onClick={shareWhatsApp} style={{ marginRight: 8 }}>
             WhatsApp teilen
           </button>
@@ -317,6 +399,42 @@ export default function Page() {
           </button>
 
           <button onClick={() => setScreen("create")}>Eigenes Quiz</button>
+
+          <div style={{ marginTop: 30, maxWidth: 600 }}>
+            <h2>Leaderboard</h2>
+
+            {leaderboard.length === 0 ? (
+              <p>Noch keine Ergebnisse vorhanden.</p>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {leaderboard.map((entry, index) => (
+                  <div
+                    key={`${entry.player_name}-${index}`}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      background: "#1e293b",
+                      padding: 14,
+                      borderRadius: 12,
+                    }}
+                  >
+                    <div>
+                      <strong>
+                        #{index + 1} {entry.player_name}
+                      </strong>
+                      <div style={{ opacity: 0.8, fontSize: 14 }}>
+                        {entry.score} / {entry.total} richtig
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 700 }}>
+                      {Math.round(Number(entry.percent))}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </>
       )}
     </main>
