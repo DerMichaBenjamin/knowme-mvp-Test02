@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -21,6 +22,21 @@ type Screen =
 type Question = {
   text: string;
   answer: boolean | null;
+};
+
+type QuizRow = {
+  id: string;
+  creator_name: string;
+  title: string;
+  question_count: number;
+};
+
+type QuizQuestionRow = {
+  id: string;
+  quiz_id: string;
+  text: string;
+  correct_answer: boolean;
+  position: number;
 };
 
 type ResultEntry = {
@@ -45,6 +61,10 @@ const pageStyle: CSSProperties = {
   fontFamily: "Arial, sans-serif",
 };
 
+const container: CSSProperties = {
+  maxWidth: 860,
+};
+
 const primaryBtn: CSSProperties = {
   fontSize: 22,
   padding: "16px 22px",
@@ -63,16 +83,28 @@ const ghostBtn: CSSProperties = {
   border: "1px solid #94a3b8",
 };
 
+const bigBtn: CSSProperties = {
+  ...primaryBtn,
+  fontSize: 30,
+  padding: "20px 28px",
+};
+
 const inputStyle: CSSProperties = {
   display: "block",
   width: "100%",
-  maxWidth: 560,
+  maxWidth: 600,
   padding: 14,
   marginBottom: 14,
   borderRadius: 12,
   border: "none",
   fontSize: 18,
-  boxSizing: "border-box",
+};
+
+const card: CSSProperties = {
+  background: "#1e293b",
+  padding: 16,
+  borderRadius: 14,
+  marginBottom: 16,
 };
 
 const swipeCard: CSSProperties = {
@@ -87,31 +119,15 @@ const swipeCard: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   textAlign: "center",
-  position: "relative",
   userSelect: "none",
   touchAction: "pan-y",
-  boxSizing: "border-box",
   transition: "transform 0.12s ease",
   marginBottom: 20,
 };
 
-const sectionStyle: CSSProperties = {
-  maxWidth: 860,
-};
-
-const questionBoxStyle: CSSProperties = {
-  background: "#1e293b",
-  padding: 16,
-  borderRadius: 14,
-  marginBottom: 16,
-  maxWidth: 720,
-};
-
-const resultRowStyle: CSSProperties = {
+const resultRow: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
   background: "#1e293b",
   padding: 14,
   borderRadius: 12,
@@ -139,6 +155,9 @@ export default function Page() {
 
   const [currentPercent, setCurrentPercent] = useState<number | null>(null);
   const [leaderboard, setLeaderboard] = useState<ResultEntry[]>([]);
+  const [dashboard, setDashboard] = useState<ResultEntry[]>([]);
+  const [average, setAverage] = useState<number | null>(null);
+  const [rank, setRank] = useState<number | null>(null);
 
   /* ---------- SWIPE ---------- */
 
@@ -146,21 +165,18 @@ export default function Page() {
   const startX = useRef<number | null>(null);
   const threshold = 80;
 
-  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     startX.current = e.clientX;
   };
 
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (startX.current === null) return;
     setDragX(e.clientX - startX.current);
   };
 
-  const onPointerUp = () => {
-    if (dragX > threshold) {
-      void answer(true);
-    } else if (dragX < -threshold) {
-      void answer(false);
-    }
+  const onUp = () => {
+    if (dragX > threshold) answer(true);
+    else if (dragX < -threshold) answer(false);
 
     setDragX(0);
     startX.current = null;
@@ -169,36 +185,24 @@ export default function Page() {
   /* ---------- LOGIC ---------- */
 
   useEffect(() => {
-    setQuizTitle(
-      creatorName.trim()
-        ? `Wie gut kennst du ${creatorName}?`
-        : "Wie gut kennst du ...?"
-    );
+    const clean = creatorName.trim();
+    setQuizTitle(clean ? `Wie gut kennst du ${clean}?` : "Wie gut kennst du ...?");
   }, [creatorName]);
 
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) loadQuiz(q);
+  }, []);
+
   const canCreate =
-    creatorName.trim().length > 0 &&
-    questions.every((q) => q.text.trim().length > 0 && q.answer !== null) &&
-    questions.length >= 3 &&
-    questions.length <= 5;
-
-  const addQuestion = () => {
-    if (questions.length >= 5) return;
-    setQuestions((prev) => [...prev, { text: "", answer: null }]);
-  };
-
-  const removeQuestion = (index: number) => {
-    if (questions.length <= 3) return;
-    setQuestions((prev) => prev.filter((_, i) => i !== index));
-  };
+    creatorName &&
+    questions.every((q) => q.text && q.answer !== null);
 
   const createQuiz = async () => {
-    if (!canCreate) return;
-
     const { data, error } = await supabase
       .from("quizzes")
       .insert({
-        creator_name: creatorName.trim(),
+        creator_name: creatorName,
         title: quizTitle,
         question_count: questions.length,
       })
@@ -206,109 +210,112 @@ export default function Page() {
       .single();
 
     if (error || !data) {
-      console.error("Supabase create quiz error:", error);
-      alert("Quiz konnte nicht gespeichert werden.");
+      alert("Fehler beim Speichern");
       return;
     }
 
-    const id = data.id as string;
+    const id = data.id;
 
-    const { error: questionError } = await supabase.from("quiz_questions").insert(
+    await supabase.from("quiz_questions").insert(
       questions.map((q, i) => ({
         quiz_id: id,
-        text: q.text.trim(),
+        text: q.text,
         correct_answer: q.answer,
         position: i + 1,
       }))
     );
 
-    if (questionError) {
-      console.error("Supabase create question error:", questionError);
-      alert("Fragen konnten nicht gespeichert werden.");
-      return;
-    }
-
-    const url = `${window.location.origin}/?q=${id}`;
     setQuizId(id);
-    setShareUrl(url);
+    setShareUrl(`${window.location.origin}/?q=${id}`);
     setScreen("share");
   };
 
-  const loadLeaderboard = async (id: string) => {
-    const { data, error } = await supabase
-      .from("quiz_results")
-      .select("player_name, score, total, percent")
+  const loadQuiz = async (id: string) => {
+    const { data: q } = await supabase
+      .from("quizzes")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    const { data: qs } = await supabase
+      .from("quiz_questions")
+      .select("*")
       .eq("quiz_id", id)
-      .order("percent", { ascending: false })
-      .order("score", { ascending: false });
+      .order("position");
 
-    if (error || !data) {
-      setLeaderboard([]);
-      return;
-    }
+    if (!q || !qs) return;
 
-    setLeaderboard(data as ResultEntry[]);
+    setQuizId(id);
+    setCreatorName(q.creator_name);
+    setQuizTitle(q.title);
+    setQuestions(
+      qs.map((x: any) => ({
+        text: x.text,
+        answer: x.correct_answer,
+      }))
+    );
+
+    setScreen("intro");
+  };
+
+  const loadStats = async () => {
+    const { data } = await supabase
+      .from("quiz_results")
+      .select("*")
+      .eq("quiz_id", quizId)
+      .order("percent", { ascending: false });
+
+    if (!data) return;
+
+    setDashboard(data);
+    setLeaderboard(data.slice(0, 10));
+
+    const avg =
+      data.reduce((acc, r) => acc + Number(r.percent), 0) / data.length;
+    setAverage(avg);
   };
 
   const answer = async (val: boolean) => {
-    const correct = questions[step]?.answer;
+    const correct = questions[step].answer;
     const newScore = score + (val === correct ? 1 : 0);
     setScore(newScore);
 
     if (step < questions.length - 1) {
-      setStep((prev) => prev + 1);
-      setDragX(0);
+      setStep(step + 1);
       return;
     }
 
     const percent = Math.round((newScore / questions.length) * 100);
     setCurrentPercent(percent);
 
-    if (!quizId) {
-      console.error("Kein quizId gesetzt.");
-      setScreen("result");
-      return;
+    if (quizId) {
+      await supabase.from("quiz_results").insert({
+        quiz_id: quizId,
+        player_name: playerName || "Anon",
+        score: newScore,
+        total: questions.length,
+        percent,
+      });
+
+      await loadStats();
+
+      const index =
+        leaderboard.findIndex((l) => l.percent <= percent) + 1;
+      setRank(index);
     }
 
-    const { error } = await supabase.from("quiz_results").insert({
-      quiz_id: quizId,
-      player_name: playerName.trim() || "Anonymous",
-      score: newScore,
-      total: questions.length,
-      percent,
-    });
-
-    if (error) {
-      console.error("Supabase result insert error:", error);
-    } else {
-      await loadLeaderboard(quizId);
-    }
-
-    setDragX(0);
     setScreen("result");
-  };
-
-  const progressPercent =
-    questions.length > 0 ? Math.round(((step + 1) / questions.length) * 100) : 0;
-
-  const startPlay = () => {
-    if (!playerName.trim()) return;
-    setStep(0);
-    setScore(0);
-    setCurrentPercent(null);
-    setDragX(0);
-    setScreen("play");
   };
 
   /* ---------- UI ---------- */
 
   return (
     <main style={pageStyle}>
-      <div style={sectionStyle}>
+      <div style={container}>
         {screen === "welcome" && (
           <>
             <h1>Wie gut kennen dich deine Freunde?</h1>
-            <button onClick={() => setScreen("create")} style={primaryBtn}>
+            <button style={bigBtn} onClick={() => setScreen("create")}>
               Quiz erstellen
             </button>
           </>
@@ -316,8 +323,6 @@ export default function Page() {
 
         {screen === "create" && (
           <>
-            <h2>Quiz erstellen</h2>
-
             <input
               placeholder="Dein Name"
               value={creatorName}
@@ -326,92 +331,35 @@ export default function Page() {
             />
 
             {questions.map((q, i) => (
-              <div key={i} style={questionBoxStyle}>
+              <div key={i} style={card}>
                 <input
                   placeholder={`Frage ${i + 1}`}
                   value={q.text}
                   onChange={(e) => {
-                    const copy = [...questions];
-                    copy[i].text = e.target.value;
-                    setQuestions(copy);
+                    const c = [...questions];
+                    c[i].text = e.target.value;
+                    setQuestions(c);
                   }}
                   style={inputStyle}
                 />
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => {
-                      const copy = [...questions];
-                      copy[i].answer = true;
-                      setQuestions(copy);
-                    }}
-                    style={{
-                      ...ghostBtn,
-                      background: q.answer === true ? "white" : "transparent",
-                      color: q.answer === true ? "#0f172a" : "white",
-                    }}
-                  >
-                    Wahr
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      const copy = [...questions];
-                      copy[i].answer = false;
-                      setQuestions(copy);
-                    }}
-                    style={{
-                      ...ghostBtn,
-                      background: q.answer === false ? "white" : "transparent",
-                      color: q.answer === false ? "#0f172a" : "white",
-                    }}
-                  >
-                    Falsch
-                  </button>
-
-                  <button
-                    onClick={() => removeQuestion(i)}
-                    disabled={questions.length <= 3}
-                    style={{
-                      ...ghostBtn,
-                      opacity: questions.length <= 3 ? 0.4 : 1,
-                    }}
-                  >
-                    Entfernen
-                  </button>
-                </div>
+                <button onClick={() => (q.answer = true)}>Wahr</button>
+                <button onClick={() => (q.answer = false)}>Falsch</button>
               </div>
             ))}
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-              <button
-                onClick={addQuestion}
-                disabled={questions.length >= 5}
-                style={{ ...ghostBtn, opacity: questions.length >= 5 ? 0.4 : 1 }}
-              >
-                + Frage hinzufügen
-              </button>
-
-              <button onClick={createQuiz} disabled={!canCreate} style={primaryBtn}>
-                Quiz teilen
-              </button>
-            </div>
+            <button onClick={createQuiz} disabled={!canCreate}>
+              Quiz teilen
+            </button>
           </>
         )}
 
         {screen === "share" && (
           <>
-            <h2>Quiz teilen</h2>
             <p>{shareUrl}</p>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-              <button
-                onClick={() => navigator.clipboard.writeText(shareUrl)}
-                style={primaryBtn}
-              >
-                Link kopieren
-              </button>
-            </div>
+            <button onClick={() => navigator.clipboard.writeText(shareUrl)}>
+              Link kopieren
+            </button>
 
             <input
               placeholder="Dein Name"
@@ -420,102 +368,68 @@ export default function Page() {
               style={inputStyle}
             />
 
-            <button onClick={startPlay} disabled={!playerName.trim()} style={primaryBtn}>
-              Start
-            </button>
+            <button onClick={() => setScreen("play")}>Start</button>
+            <button onClick={() => setScreen("dashboard")}>Dashboard</button>
+          </>
+        )}
+
+        {screen === "intro" && (
+          <>
+            <h1>{quizTitle}</h1>
+            <input
+              placeholder="Dein Name"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              style={inputStyle}
+            />
+            <button onClick={() => setScreen("play")}>Start</button>
           </>
         )}
 
         {screen === "play" && (
           <>
-            <p style={{ opacity: 0.8 }}>Frage {step + 1} von {questions.length}</p>
-
-            <div
-              style={{
-                width: "100%",
-                maxWidth: 720,
-                height: 12,
-                background: "#334155",
-                borderRadius: 999,
-                overflow: "hidden",
-                marginBottom: 20,
-              }}
-            >
-              <div
-                style={{
-                  width: `${progressPercent}%`,
-                  height: "100%",
-                  background: "white",
-                }}
-              />
-            </div>
-
-            <h2>{questions[step]?.text}</h2>
+            <h2>{questions[step].text}</h2>
 
             <div
               style={{
                 ...swipeCard,
-                transform: `translateX(${dragX}px) rotate(${dragX / 15}deg)`,
+                transform: `translateX(${dragX}px)`,
               }}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
+              onPointerDown={onDown}
+              onPointerMove={onMove}
+              onPointerUp={onUp}
             >
               Swipe →
             </div>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => void answer(true)} style={primaryBtn}>
-                Wahr
-              </button>
-              <button onClick={() => void answer(false)} style={ghostBtn}>
-                Falsch
-              </button>
-            </div>
+            <button onClick={() => answer(true)}>Wahr</button>
+            <button onClick={() => answer(false)}>Falsch</button>
           </>
         )}
 
         {screen === "result" && (
           <>
             <h1>{currentPercent}%</h1>
+            {rank && <p>Platz {rank}</p>}
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-              <button
-                onClick={() => navigator.clipboard.writeText(shareUrl)}
-                style={primaryBtn}
-              >
-                Link teilen
-              </button>
+            <button onClick={() => setScreen("dashboard")}>
+              Statistik
+            </button>
+          </>
+        )}
 
-              <button onClick={() => setScreen("create")} style={ghostBtn}>
-                Neues Quiz erstellen
-              </button>
-            </div>
+        {screen === "dashboard" && (
+          <>
+            <h1>Dashboard</h1>
+            <p>Teilnehmer: {dashboard.length}</p>
+            <p>Durchschnitt: {average ? Math.round(average) + "%" : "-"}</p>
 
-            <h2>Leaderboard</h2>
-
-            {leaderboard.length === 0 ? (
-              <p>Noch keine Ergebnisse vorhanden.</p>
-            ) : (
-              <div style={{ display: "grid", gap: 10, maxWidth: 720 }}>
-                {leaderboard.slice(0, 10).map((entry, index) => (
-                  <div key={`${entry.player_name}-${index}`} style={resultRowStyle}>
-                    <div>
-                      <strong>
-                        #{index + 1} {entry.player_name}
-                      </strong>
-                      <div style={{ opacity: 0.8, fontSize: 14 }}>
-                        {entry.score} / {entry.total} richtig
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 700, fontSize: 22 }}>
-                      {Math.round(Number(entry.percent))}%
-                    </div>
-                  </div>
-                ))}
+            {dashboard.map((r, i) => (
+              <div key={i} style={resultRow}>
+                <span>{r.player_name}</span>
+                <span>{r.percent}%</span>
               </div>
-            )}
+            ))}
           </>
         )}
       </div>
