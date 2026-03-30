@@ -66,7 +66,7 @@ const containerStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   display: "block",
-  marginBottom: 16,
+  marginBottom: 8,
   padding: 14,
   width: "100%",
   maxWidth: 640,
@@ -74,6 +74,19 @@ const inputStyle: React.CSSProperties = {
   border: "none",
   fontSize: 18,
   boxSizing: "border-box",
+};
+
+const invalidInputStyle: React.CSSProperties = {
+  ...inputStyle,
+  border: "2px solid #ef4444",
+  background: "#fff5f5",
+  color: "#111827",
+};
+
+const fieldErrorTextStyle: React.CSSProperties = {
+  color: "#fca5a5",
+  fontSize: 15,
+  marginBottom: 12,
 };
 
 const linkBoxStyle: React.CSSProperties = {
@@ -177,6 +190,19 @@ const progressTrackStyle: React.CSSProperties = {
   marginBottom: 24,
 };
 
+const questionCardStyle: React.CSSProperties = {
+  background: "#111827",
+  padding: 16,
+  borderRadius: 14,
+  marginBottom: 20,
+};
+
+const invalidQuestionCardStyle: React.CSSProperties = {
+  ...questionCardStyle,
+  border: "1px solid #7f1d1d",
+  background: "#1f1720",
+};
+
 const getResultHeadline = (percent: number | null) => {
   if (percent === null) return "";
   if (percent >= 80) return "Stark. Du kennst die Person wirklich gut.";
@@ -228,30 +254,41 @@ export default function Page() {
     void loadQuiz(q);
   }, []);
 
+  const creatorNameMissing = !creatorName.trim();
+
+  const questionValidation = useMemo(
+    () =>
+      questions.map((q) => ({
+        missingText: !q.text.trim(),
+        missingAnswer: q.answer === null,
+      })),
+    [questions]
+  );
+
   const missingFields = useMemo(() => {
     const issues: string[] = [];
 
-    if (!creatorName.trim()) {
+    if (creatorNameMissing) {
       issues.push("Bitte den Namen des Quiz-Erstellers eingeben.");
     }
 
-    questions.forEach((q, index) => {
-      if (!q.text.trim()) {
+    questionValidation.forEach((v, index) => {
+      if (v.missingText) {
         issues.push(`Frage ${index + 1}: Text fehlt.`);
       }
-      if (q.answer === null) {
+      if (v.missingAnswer) {
         issues.push(`Frage ${index + 1}: Wahr/Falsch fehlt.`);
       }
     });
 
     return issues;
-  }, [creatorName, questions]);
+  }, [creatorNameMissing, questionValidation]);
 
   const canCreate =
-    !!creatorName.trim() &&
+    !creatorNameMissing &&
     questions.length >= 3 &&
     questions.length <= 5 &&
-    questions.every((q) => q.text.trim() && q.answer !== null);
+    questionValidation.every((v) => !v.missingText && !v.missingAnswer);
 
   const leaderboardText = useMemo(() => {
     if (!playerRank) return "";
@@ -562,8 +599,13 @@ export default function Page() {
               placeholder="Dein Name"
               value={creatorName}
               onChange={(e) => setCreatorName(e.target.value)}
-              style={inputStyle}
+              style={creatorNameMissing ? invalidInputStyle : inputStyle}
             />
+            {creatorNameMissing && (
+              <div style={fieldErrorTextStyle}>
+                Bitte den Namen des Quiz-Erstellers eingeben.
+              </div>
+            )}
 
             <p style={{ marginBottom: 12, opacity: 0.8, fontSize: 18 }}>
               Du kannst 3 bis 5 Fragen erstellen.
@@ -582,79 +624,106 @@ export default function Page() {
               </div>
             )}
 
-            {questions.map((q, i) => (
-              <div key={i} style={{ marginBottom: 24 }}>
+            {questions.map((q, i) => {
+              const validation = questionValidation[i];
+              const hasIssue = validation.missingText || validation.missingAnswer;
+
+              return (
                 <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    marginBottom: 8,
-                    flexWrap: "wrap",
-                  }}
+                  key={i}
+                  style={hasIssue ? invalidQuestionCardStyle : questionCardStyle}
                 >
-                  <strong style={{ fontSize: 20 }}>Frage {i + 1}</strong>
-                  <button
-                    onClick={() => removeQuestion(i)}
-                    disabled={questions.length <= 3}
+                  <div
                     style={{
-                      opacity: questions.length <= 3 ? 0.4 : 1,
-                      padding: "8px 12px",
-                      fontSize: 16,
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      marginBottom: 8,
+                      flexWrap: "wrap",
                     }}
                   >
-                    Entfernen
-                  </button>
-                </div>
+                    <strong style={{ fontSize: 20 }}>Frage {i + 1}</strong>
+                    <button
+                      onClick={() => removeQuestion(i)}
+                      disabled={questions.length <= 3}
+                      style={{
+                        opacity: questions.length <= 3 ? 0.4 : 1,
+                        padding: "8px 12px",
+                        fontSize: 16,
+                      }}
+                    >
+                      Entfernen
+                    </button>
+                  </div>
 
-                <input
-                  placeholder={`Frage ${i + 1}`}
-                  value={q.text}
-                  onChange={(e) => {
-                    const copy = [...questions];
-                    copy[i].text = e.target.value;
-                    setQuestions(copy);
-                  }}
-                  style={inputStyle}
-                />
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => {
+                  <input
+                    placeholder={`Frage ${i + 1}`}
+                    value={q.text}
+                    onChange={(e) => {
                       const copy = [...questions];
-                      copy[i].answer = true;
+                      copy[i].text = e.target.value;
                       setQuestions(copy);
                     }}
-                    style={{
-                      ...ghostButton,
-                      background: q.answer === true ? "white" : "transparent",
-                      color: q.answer === true ? "#0f172a" : "white",
-                      fontSize: 20,
-                      padding: "14px 18px",
-                    }}
-                  >
-                    Wahr
-                  </button>
+                    style={validation.missingText ? invalidInputStyle : inputStyle}
+                  />
+                  {validation.missingText && (
+                    <div style={fieldErrorTextStyle}>
+                      Bitte einen Fragetext eingeben.
+                    </div>
+                  )}
 
-                  <button
-                    onClick={() => {
-                      const copy = [...questions];
-                      copy[i].answer = false;
-                      setQuestions(copy);
-                    }}
-                    style={{
-                      ...ghostButton,
-                      background: q.answer === false ? "white" : "transparent",
-                      color: q.answer === false ? "#0f172a" : "white",
-                      fontSize: 20,
-                      padding: "14px 18px",
-                    }}
-                  >
-                    Falsch
-                  </button>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => {
+                        const copy = [...questions];
+                        copy[i].answer = true;
+                        setQuestions(copy);
+                      }}
+                      style={{
+                        ...ghostButton,
+                        background: q.answer === true ? "white" : "transparent",
+                        color: q.answer === true ? "#0f172a" : "white",
+                        fontSize: 20,
+                        padding: "14px 18px",
+                        border:
+                          validation.missingAnswer && q.answer === null
+                            ? "2px solid #ef4444"
+                            : ghostButton.border,
+                      }}
+                    >
+                      Wahr
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const copy = [...questions];
+                        copy[i].answer = false;
+                        setQuestions(copy);
+                      }}
+                      style={{
+                        ...ghostButton,
+                        background: q.answer === false ? "white" : "transparent",
+                        color: q.answer === false ? "#0f172a" : "white",
+                        fontSize: 20,
+                        padding: "14px 18px",
+                        border:
+                          validation.missingAnswer && q.answer === null
+                            ? "2px solid #ef4444"
+                            : ghostButton.border,
+                      }}
+                    >
+                      Falsch
+                    </button>
+                  </div>
+
+                  {validation.missingAnswer && (
+                    <div style={{ ...fieldErrorTextStyle, marginTop: 10, marginBottom: 0 }}>
+                      Bitte Wahr oder Falsch auswählen.
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
               <button
