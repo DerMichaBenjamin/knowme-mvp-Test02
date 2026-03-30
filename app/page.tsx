@@ -165,8 +165,6 @@ const progressTrackStyle: CSSProperties = {
   marginBottom: 20,
 };
 
-/* ---------- HELPERS ---------- */
-
 const getResultHeadline = (percent: number | null) => {
   if (percent === null) return "";
   if (percent >= 85) return "Stark. Das war fast schon unfair gut.";
@@ -187,24 +185,22 @@ const buildChallengeText = (
   if (p >= 85) {
     return `Ich kenne ${person} besser als fast alle 😄 (${p}%)
 ${betterThanPercent !== null ? `Ich war besser als ${betterThanPercent}% der Teilnehmer.` : ""}
-Schaffst du das auch?
+Jetzt bist du dran:
 ${shareUrl}`;
   }
 
   if (p >= 60) {
     return `Ich dachte, ich kenne ${person} gut… (${p}%) 😅
 ${betterThanPercent !== null ? `Ich war immerhin besser als ${betterThanPercent}% der Teilnehmer.` : ""}
-Du schaffst bestimmt mehr.
+Meinst du, du schaffst mehr?
 ${shareUrl}`;
   }
 
   return `Das war peinlich 😂 nur ${p}%
-${betterThanPercent !== null ? `Immerhin: besser als ${betterThanPercent}%?` : ""}
-Du bist bestimmt besser.
+${betterThanPercent !== null ? `Vielleicht bist du besser als ${betterThanPercent}%?` : ""}
+Mach es besser:
 ${shareUrl}`;
 };
-
-/* ---------- COMPONENT ---------- */
 
 export default function Page() {
   const [screen, setScreen] = useState<Screen>("welcome");
@@ -308,6 +304,13 @@ export default function Page() {
     () => buildChallengeText(creatorName, currentPercent, shareUrl, betterThanPercent),
     [creatorName, currentPercent, shareUrl, betterThanPercent]
   );
+
+  const resultCTA = useMemo(() => {
+    const p = currentPercent ?? 0;
+    if (p >= 85) return "Fordere jetzt jemanden heraus, der behauptet, dich besser zu kennen.";
+    if (p >= 60) return "Schick das jetzt an Freunde und schau, wer wirklich besser abschneidet.";
+    return "Das musst du jetzt weiterleiten. Irgendwer wird es besser machen.";
+  }, [currentPercent]);
 
   /* ---------- LOGIC ---------- */
 
@@ -507,7 +510,7 @@ export default function Page() {
     try {
       await navigator.clipboard.writeText(challengeText);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
+      setTimeout(() => setCopied(false), 1400);
     } catch (e) {
       console.error(e);
       alert("Text konnte nicht kopiert werden.");
@@ -650,7 +653,7 @@ export default function Page() {
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
               <button onClick={copyChallengeText} style={primaryBtn}>
-                {copied ? "Kopiert" : "Challenge-Text kopieren"}
+                {copied ? "Gesendet vorbereitet" : "Quiz an Freunde senden"}
               </button>
               <button onClick={shareWhatsApp} style={ghostBtn}>
                 WhatsApp
@@ -790,12 +793,16 @@ export default function Page() {
               <p>Durchschnitt bisher: {Math.round(average)}%</p>
             )}
 
+            <p style={{ fontSize: 20, fontWeight: 700, marginTop: 16 }}>
+              {resultCTA}
+            </p>
+
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
               <button onClick={shareWhatsApp} style={primaryBtn}>
                 Freund herausfordern
               </button>
               <button onClick={copyChallengeText} style={ghostBtn}>
-                {copied ? "Kopiert" : "Challenge-Text kopieren"}
+                {copied ? "Gesendet vorbereitet" : "Quiz an Freunde senden"}
               </button>
               <button onClick={openDashboard} style={ghostBtn}>
                 Statistik
