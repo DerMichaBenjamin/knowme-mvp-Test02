@@ -1,7 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+
+type Question = {
+  text: string;
+  answer: boolean | null;
+};
+
+type QuizInsert = {
+  creator_name: string;
+  title: string;
+  question_count: number;
+};
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,12 +20,13 @@ const supabase = createClient(
 );
 
 export default function Page() {
-  const [screen, setScreen] = useState("welcome");
+  const [screen, setScreen] = useState<"welcome" | "create" | "share" | "play" | "result">("welcome");
   const [creatorName, setCreatorName] = useState("");
   const [quizTitle, setQuizTitle] = useState("Wie gut kennst du ...?");
   const [shareUrl, setShareUrl] = useState("");
+  const [quizId, setQuizId] = useState("");
 
-  const [questions, setQuestions] = useState([
+  const [questions, setQuestions] = useState<Question[]>([
     { text: "", answer: null },
     { text: "", answer: null },
     { text: "", answer: null },
@@ -23,10 +35,8 @@ export default function Page() {
   const [playerName, setPlayerName] = useState("");
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
-  const [selected, setSelected] = useState<boolean | null>(null);
 
   const [currentPercent, setCurrentPercent] = useState<number | null>(null);
-  const [averagePercent, setAveragePercent] = useState<number | null>(null);
 
   useEffect(() => {
     const clean = creatorName.trim();
@@ -34,22 +44,20 @@ export default function Page() {
   }, [creatorName]);
 
   const canCreate =
-    creatorName.trim() &&
+    !!creatorName.trim() &&
     questions.length >= 3 &&
     questions.length <= 5 &&
     questions.every((q) => q.text.trim() && q.answer !== null);
-
-  // ---------------- SHARE LOGIC ----------------
 
   const generateChallengeText = () => {
     const percent = currentPercent ?? 50;
 
     if (percent >= 80) {
-      return `Ich kenne ${creatorName} besser als fast alle 😄 (${percent}%)\nSchaffst du das auch?\n${shareUrl}`;
+      return `Ich kenne ${creatorName || "diese Person"} besser als fast alle 😄 (${percent}%)\nSchaffst du das auch?\n${shareUrl}`;
     }
 
     if (percent >= 50) {
-      return `Ich dachte ich kenne ${creatorName} gut… (${percent}%) 😅\nDu schaffst mehr!\n${shareUrl}`;
+      return `Ich dachte ich kenne ${creatorName || "die Person"} gut… (${percent}%) 😅\nDu schaffst mehr!\n${shareUrl}`;
     }
 
     return `Das war peinlich 😂 nur ${percent}%\nDu bist besser!\n${shareUrl}`;
@@ -70,45 +78,54 @@ export default function Page() {
           url: shareUrl,
         });
         return;
-      } catch {}
+      } catch {
+        // ignore cancel
+      }
     }
 
     await navigator.clipboard.writeText(text);
     alert("Text kopiert – jetzt in Instagram oder TikTok einfügen");
   };
 
-  // ---------------- CREATE ----------------
-
   const createQuiz = async () => {
     if (!canCreate) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("quizzes")
       .insert({
-        creator_name: creatorName,
+        creator_name: creatorName.trim(),
         title: quizTitle,
         question_count: questions.length,
-      })
-      .select()
+      } satisfies QuizInsert)
+      .select("id")
       .single();
 
-    const quizId = data.id;
+    if (error || !data) {
+      alert(`Quiz konnte nicht gespeichert werden: ${error?.message || "unbekannter Fehler"}`);
+      return;
+    }
 
-    await supabase.from("quiz_questions").insert(
+    const newQuizId = data.id as string;
+
+    const { error: questionError } = await supabase.from("quiz_questions").insert(
       questions.map((q, i) => ({
-        quiz_id: quizId,
+        quiz_id: newQuizId,
         text: q.text,
         correct_answer: q.answer,
         position: i + 1,
       }))
     );
 
-    const url = `${window.location.origin}/?q=${quizId}`;
+    if (questionError) {
+      alert(`Fragen konnten nicht gespeichert werden: ${questionError.message}`);
+      return;
+    }
+
+    const url = `${window.location.origin}/?q=${newQuizId}`;
+    setQuizId(newQuizId);
     setShareUrl(url);
     setScreen("share");
   };
-
-  // ---------------- QUIZ ----------------
 
   const answer = async (val: boolean) => {
     const correct = questions[step].answer;
@@ -123,21 +140,31 @@ export default function Page() {
     const percent = Math.round((newScore / questions.length) * 100);
     setCurrentPercent(percent);
 
-    await supabase.from("quiz_results").insert({
-      quiz_id: shareUrl.split("q=")[1],
-      player_name: playerName,
-      score: newScore,
-      total: questions.length,
-      percent,
-    });
+    const finalQuizId = quizId || shareUrl.split("q=")[1] || "";
+
+    if (finalQuizId) {
+      await supabase.from("quiz_results").insert({
+        quiz_id: finalQuizId,
+        player_name: playerName || "Anonymous",
+        score: newScore,
+        total: questions.length,
+        percent,
+      });
+    }
 
     setScreen("result");
   };
 
-  // ---------------- UI ----------------
-
   return (
-    <main style={{ padding: 40, color: "white", background: "#0f172a", minHeight: "100vh" }}>
+    <main
+      style={{
+        padding: 40,
+        color: "white",
+        background: "#0f172a",
+        minHeight: "100vh",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
       {screen === "welcome" && (
         <>
           <h1>Wie gut kennen dich deine Freunde?</h1>
@@ -153,10 +180,11 @@ export default function Page() {
             placeholder="Dein Name"
             value={creatorName}
             onChange={(e) => setCreatorName(e.target.value)}
+            style={{ display: "block", marginBottom: 16, padding: 10, width: "100%", maxWidth: 500 }}
           />
 
           {questions.map((q, i) => (
-            <div key={i}>
+            <div key={i} style={{ marginBottom: 20 }}>
               <input
                 placeholder={`Frage ${i + 1}`}
                 value={q.text}
@@ -165,6 +193,7 @@ export default function Page() {
                   copy[i].text = e.target.value;
                   setQuestions(copy);
                 }}
+                style={{ display: "block", marginBottom: 8, padding: 10, width: "100%", maxWidth: 500 }}
               />
 
               <button
@@ -172,6 +201,13 @@ export default function Page() {
                   const copy = [...questions];
                   copy[i].answer = true;
                   setQuestions(copy);
+                }}
+                style={{
+                  marginRight: 8,
+                  background: q.answer === true ? "white" : "transparent",
+                  color: q.answer === true ? "#0f172a" : "white",
+                  border: "1px solid white",
+                  padding: "10px 14px",
                 }}
               >
                 Wahr
@@ -183,13 +219,21 @@ export default function Page() {
                   copy[i].answer = false;
                   setQuestions(copy);
                 }}
+                style={{
+                  background: q.answer === false ? "white" : "transparent",
+                  color: q.answer === false ? "#0f172a" : "white",
+                  border: "1px solid white",
+                  padding: "10px 14px",
+                }}
               >
                 Falsch
               </button>
             </div>
           ))}
 
-          <button onClick={createQuiz}>Link erstellen</button>
+          <button onClick={createQuiz} disabled={!canCreate}>
+            Link erstellen
+          </button>
         </>
       )}
 
@@ -198,10 +242,25 @@ export default function Page() {
           <h2>Teilen</h2>
           <p>{shareUrl}</p>
 
-          <button onClick={shareWhatsApp}>WhatsApp</button>
-          <button onClick={shareOther}>Instagram / TikTok</button>
+          <button onClick={shareWhatsApp} style={{ marginRight: 8 }}>
+            WhatsApp
+          </button>
+          <button onClick={shareOther} style={{ marginRight: 8 }}>
+            Instagram / TikTok
+          </button>
 
-          <button onClick={() => setScreen("play")}>Test spielen</button>
+          <div style={{ marginTop: 20 }}>
+            <input
+              placeholder="Dein Name"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              style={{ display: "block", marginBottom: 12, padding: 10, width: "100%", maxWidth: 500 }}
+            />
+
+            <button onClick={() => setScreen("play")} disabled={!playerName.trim()}>
+              Test spielen
+            </button>
+          </div>
         </>
       )}
 
@@ -209,7 +268,9 @@ export default function Page() {
         <>
           <h2>{questions[step].text}</h2>
 
-          <button onClick={() => answer(true)}>Wahr</button>
+          <button onClick={() => answer(true)} style={{ marginRight: 8 }}>
+            Wahr
+          </button>
           <button onClick={() => answer(false)}>Falsch</button>
         </>
       )}
@@ -218,8 +279,12 @@ export default function Page() {
         <>
           <h1>{currentPercent}%</h1>
 
-          <button onClick={shareWhatsApp}>WhatsApp teilen</button>
-          <button onClick={shareOther}>Instagram / TikTok</button>
+          <button onClick={shareWhatsApp} style={{ marginRight: 8 }}>
+            WhatsApp teilen
+          </button>
+          <button onClick={shareOther} style={{ marginRight: 8 }}>
+            Instagram / TikTok
+          </button>
 
           <button onClick={() => setScreen("create")}>Eigenes Quiz</button>
         </>
