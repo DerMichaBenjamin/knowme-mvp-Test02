@@ -51,11 +51,17 @@ const supabase = createClient(
 );
 
 const pageStyle: React.CSSProperties = {
-  padding: 24,
+  padding: 20,
   color: "white",
   background: "#0f172a",
   minHeight: "100vh",
   fontFamily: "Arial, sans-serif",
+};
+
+const containerStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 860,
+  margin: "0 auto",
 };
 
 const inputStyle: React.CSSProperties = {
@@ -63,7 +69,7 @@ const inputStyle: React.CSSProperties = {
   marginBottom: 16,
   padding: 14,
   width: "100%",
-  maxWidth: 560,
+  maxWidth: 640,
   borderRadius: 12,
   border: "none",
   fontSize: 18,
@@ -114,12 +120,14 @@ const bigPrimaryButton: React.CSSProperties = {
 };
 
 const answerButtonBase: React.CSSProperties = {
-  fontSize: 26,
-  padding: "18px 24px",
-  borderRadius: 14,
+  fontSize: 30,
+  padding: "24px 28px",
+  borderRadius: 18,
   border: "1px solid white",
   cursor: "pointer",
-  minWidth: 150,
+  minWidth: 180,
+  minHeight: 90,
+  fontWeight: 700,
 };
 
 const statCardStyle: React.CSSProperties = {
@@ -147,6 +155,26 @@ const resultRowStyle: React.CSSProperties = {
   background: "#1e293b",
   padding: 16,
   borderRadius: 14,
+};
+
+const warningBoxStyle: React.CSSProperties = {
+  background: "#3f1d1d",
+  color: "#fecaca",
+  border: "1px solid #7f1d1d",
+  padding: 14,
+  borderRadius: 12,
+  marginBottom: 18,
+  maxWidth: 720,
+};
+
+const progressTrackStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 700,
+  height: 14,
+  background: "#334155",
+  borderRadius: 999,
+  overflow: "hidden",
+  marginBottom: 24,
 };
 
 const getResultHeadline = (percent: number | null) => {
@@ -200,6 +228,25 @@ export default function Page() {
     void loadQuiz(q);
   }, []);
 
+  const missingFields = useMemo(() => {
+    const issues: string[] = [];
+
+    if (!creatorName.trim()) {
+      issues.push("Bitte den Namen des Quiz-Erstellers eingeben.");
+    }
+
+    questions.forEach((q, index) => {
+      if (!q.text.trim()) {
+        issues.push(`Frage ${index + 1}: Text fehlt.`);
+      }
+      if (q.answer === null) {
+        issues.push(`Frage ${index + 1}: Wahr/Falsch fehlt.`);
+      }
+    });
+
+    return issues;
+  }, [creatorName, questions]);
+
   const canCreate =
     !!creatorName.trim() &&
     questions.length >= 3 &&
@@ -221,6 +268,11 @@ export default function Page() {
     );
     return `Du warst besser als ${betterThan}% der bisherigen Teilnehmer.`;
   }, [playerRank, leaderboard.length]);
+
+  const progressPercent = useMemo(() => {
+    if (!questions.length) return 0;
+    return Math.round(((step + 1) / questions.length) * 100);
+  }, [step, questions.length]);
 
   const generateChallengeText = () => {
     const percent = currentPercent ?? 50;
@@ -481,150 +533,198 @@ export default function Page() {
   if (loadingSharedQuiz) {
     return (
       <main style={pageStyle}>
-        <h2>Lädt...</h2>
+        <div style={containerStyle}>
+          <h2>Lädt...</h2>
+        </div>
       </main>
     );
   }
 
   return (
     <main style={pageStyle}>
-      {screen === "welcome" && (
-        <>
-          <h1 style={{ fontSize: 42, marginBottom: 16 }}>
-            Wie gut kennen dich deine Freunde?
-          </h1>
-          <button onClick={() => setScreen("create")} style={bigPrimaryButton}>
-            Quiz erstellen
-          </button>
-        </>
-      )}
+      <div style={containerStyle}>
+        {screen === "welcome" && (
+          <>
+            <h1 style={{ fontSize: 42, marginBottom: 16 }}>
+              Wie gut kennen dich deine Freunde?
+            </h1>
+            <button onClick={() => setScreen("create")} style={bigPrimaryButton}>
+              Quiz erstellen
+            </button>
+          </>
+        )}
 
-      {screen === "create" && (
-        <>
-          <h2 style={{ fontSize: 34 }}>Quiz erstellen</h2>
+        {screen === "create" && (
+          <>
+            <h2 style={{ fontSize: 34 }}>Quiz erstellen</h2>
 
-          <input
-            placeholder="Dein Name"
-            value={creatorName}
-            onChange={(e) => setCreatorName(e.target.value)}
-            style={inputStyle}
-          />
+            <input
+              placeholder="Dein Name"
+              value={creatorName}
+              onChange={(e) => setCreatorName(e.target.value)}
+              style={inputStyle}
+            />
 
-          <p style={{ marginBottom: 12, opacity: 0.8, fontSize: 18 }}>
-            Du kannst 3 bis 5 Fragen erstellen.
-          </p>
+            <p style={{ marginBottom: 12, opacity: 0.8, fontSize: 18 }}>
+              Du kannst 3 bis 5 Fragen erstellen.
+            </p>
 
-          {questions.map((q, i) => (
-            <div key={i} style={{ marginBottom: 20 }}>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  marginBottom: 8,
-                }}
-              >
-                <strong style={{ fontSize: 20 }}>Frage {i + 1}</strong>
-                <button
-                  onClick={() => removeQuestion(i)}
-                  disabled={questions.length <= 3}
+            {missingFields.length > 0 && (
+              <div style={warningBoxStyle}>
+                <strong>Bitte noch ergänzen:</strong>
+                <ul style={{ marginTop: 10, marginBottom: 0, paddingLeft: 22 }}>
+                  {missingFields.map((item, index) => (
+                    <li key={`${item}-${index}`} style={{ marginBottom: 6 }}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {questions.map((q, i) => (
+              <div key={i} style={{ marginBottom: 24 }}>
+                <div
                   style={{
-                    opacity: questions.length <= 3 ? 0.4 : 1,
-                    padding: "8px 12px",
-                    fontSize: 16,
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                    marginBottom: 8,
+                    flexWrap: "wrap",
                   }}
                 >
-                  Entfernen
-                </button>
-              </div>
+                  <strong style={{ fontSize: 20 }}>Frage {i + 1}</strong>
+                  <button
+                    onClick={() => removeQuestion(i)}
+                    disabled={questions.length <= 3}
+                    style={{
+                      opacity: questions.length <= 3 ? 0.4 : 1,
+                      padding: "8px 12px",
+                      fontSize: 16,
+                    }}
+                  >
+                    Entfernen
+                  </button>
+                </div>
 
-              <input
-                placeholder={`Frage ${i + 1}`}
-                value={q.text}
-                onChange={(e) => {
-                  const copy = [...questions];
-                  copy[i].text = e.target.value;
-                  setQuestions(copy);
+                <input
+                  placeholder={`Frage ${i + 1}`}
+                  value={q.text}
+                  onChange={(e) => {
+                    const copy = [...questions];
+                    copy[i].text = e.target.value;
+                    setQuestions(copy);
+                  }}
+                  style={inputStyle}
+                />
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => {
+                      const copy = [...questions];
+                      copy[i].answer = true;
+                      setQuestions(copy);
+                    }}
+                    style={{
+                      ...ghostButton,
+                      background: q.answer === true ? "white" : "transparent",
+                      color: q.answer === true ? "#0f172a" : "white",
+                      fontSize: 20,
+                      padding: "14px 18px",
+                    }}
+                  >
+                    Wahr
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const copy = [...questions];
+                      copy[i].answer = false;
+                      setQuestions(copy);
+                    }}
+                    style={{
+                      ...ghostButton,
+                      background: q.answer === false ? "white" : "transparent",
+                      color: q.answer === false ? "#0f172a" : "white",
+                      fontSize: 20,
+                      padding: "14px 18px",
+                    }}
+                  >
+                    Falsch
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+              <button
+                onClick={addQuestion}
+                disabled={questions.length >= 5}
+                style={{
+                  ...ghostButton,
+                  opacity: questions.length >= 5 ? 0.4 : 1,
+                  fontSize: 18,
+                  padding: "12px 16px",
                 }}
+              >
+                + Frage hinzufügen
+              </button>
+            </div>
+
+            <button onClick={createQuiz} disabled={!canCreate} style={primaryButton}>
+              Quiz mit deinen Freunden teilen
+            </button>
+          </>
+        )}
+
+        {screen === "share" && (
+          <>
+            <h2 style={{ fontSize: 34 }}>Quiz teilen</h2>
+            <p style={{ maxWidth: 700, fontSize: 18 }}>
+              Dein Quiz ist fertig. Verschicke jetzt den Link an deine Freunde oder
+              teste es selbst.
+            </p>
+
+            <div style={linkBoxStyle}>{shareUrl}</div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 }}>
+              <button onClick={shareWhatsApp} style={primaryButton}>
+                WhatsApp
+              </button>
+              <button onClick={copyChallengeText} style={ghostButton}>
+                {copied ? "Kopiert" : "Challenge-Text kopieren"}
+              </button>
+              <button onClick={openDashboard} style={ghostButton}>
+                Dashboard
+              </button>
+            </div>
+
+            <div style={{ marginTop: 24 }}>
+              <input
+                placeholder="Dein Name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
                 style={inputStyle}
               />
 
-              <button
-                onClick={() => {
-                  const copy = [...questions];
-                  copy[i].answer = true;
-                  setQuestions(copy);
-                }}
-                style={{
-                  ...answerButtonBase,
-                  background: q.answer === true ? "white" : "transparent",
-                  color: q.answer === true ? "#0f172a" : "white",
-                }}
-              >
-                Wahr
-              </button>
-
-              <button
-                onClick={() => {
-                  const copy = [...questions];
-                  copy[i].answer = false;
-                  setQuestions(copy);
-                }}
-                style={{
-                  ...answerButtonBase,
-                  background: q.answer === false ? "white" : "transparent",
-                  color: q.answer === false ? "#0f172a" : "white",
-                }}
-              >
-                Falsch
+              <button onClick={startPlay} disabled={!playerName.trim()} style={primaryButton}>
+                Test spielen
               </button>
             </div>
-          ))}
+          </>
+        )}
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-            <button
-              onClick={addQuestion}
-              disabled={questions.length >= 5}
-              style={{
-                ...ghostButton,
-                opacity: questions.length >= 5 ? 0.4 : 1,
-                fontSize: 18,
-                padding: "12px 16px",
-              }}
-            >
-              + Frage hinzufügen
-            </button>
-          </div>
+        {screen === "intro" && (
+          <>
+            <h1 style={{ fontSize: 36, marginBottom: 12 }}>{quizTitle}</h1>
+            <p style={{ fontSize: 22, marginBottom: 8 }}>
+              {questions.length} Fragen · dauert ca. 20 Sekunden
+            </p>
+            <p style={{ marginBottom: 20, opacity: 0.85, fontSize: 18 }}>
+              Beantworte die Aussagen mit Wahr oder Falsch und schau, wie gut du{" "}
+              {creatorName || "die Person"} wirklich kennst.
+            </p>
 
-          <button onClick={createQuiz} disabled={!canCreate} style={primaryButton}>
-            Quiz mit deinen Freunden teilen
-          </button>
-        </>
-      )}
-
-      {screen === "share" && (
-        <>
-          <h2 style={{ fontSize: 34 }}>Quiz teilen</h2>
-          <p style={{ maxWidth: 700, fontSize: 18 }}>
-            Dein Quiz ist fertig. Verschicke jetzt den Link an deine Freunde oder
-            teste es selbst.
-          </p>
-
-          <div style={linkBoxStyle}>{shareUrl}</div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 }}>
-            <button onClick={shareWhatsApp} style={primaryButton}>
-              WhatsApp
-            </button>
-            <button onClick={copyChallengeText} style={ghostButton}>
-              {copied ? "Kopiert" : "Challenge-Text kopieren"}
-            </button>
-            <button onClick={openDashboard} style={ghostButton}>
-              Dashboard
-            </button>
-          </div>
-
-          <div style={{ marginTop: 24 }}>
             <input
               placeholder="Dein Name"
               value={playerName}
@@ -632,126 +732,194 @@ export default function Page() {
               style={inputStyle}
             />
 
-            <button onClick={startPlay} disabled={!playerName.trim()} style={primaryButton}>
-              Test spielen
-            </button>
-          </div>
-        </>
-      )}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={startPlay}
+                disabled={!playerName.trim()}
+                style={bigPrimaryButton}
+              >
+                Quiz starten
+              </button>
+              <button onClick={openDashboard} style={ghostButton}>
+                Dashboard
+              </button>
+            </div>
+          </>
+        )}
 
-      {screen === "intro" && (
-        <>
-          <h1 style={{ fontSize: 36, marginBottom: 12 }}>{quizTitle}</h1>
-          <p style={{ fontSize: 22, marginBottom: 8 }}>
-            {questions.length} Fragen · dauert ca. 20 Sekunden
-          </p>
-          <p style={{ marginBottom: 20, opacity: 0.85, fontSize: 18 }}>
-            Beantworte die Aussagen mit Wahr oder Falsch und schau, wie gut du{" "}
-            {creatorName || "die Person"} wirklich kennst.
-          </p>
+        {screen === "play" && (
+          <>
+            <p style={{ opacity: 0.8, marginBottom: 10, fontSize: 18 }}>
+              Frage {step + 1} von {questions.length}
+            </p>
 
-          <input
-            placeholder="Dein Name"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            style={inputStyle}
-          />
+            <div style={progressTrackStyle}>
+              <div
+                style={{
+                  width: `${progressPercent}%`,
+                  height: "100%",
+                  background: "white",
+                  borderRadius: 999,
+                }}
+              />
+            </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              onClick={startPlay}
-              disabled={!playerName.trim()}
-              style={bigPrimaryButton}
-            >
-              Quiz starten
-            </button>
-            <button onClick={openDashboard} style={ghostButton}>
-              Dashboard
-            </button>
-          </div>
-        </>
-      )}
-
-      {screen === "play" && (
-        <>
-          <p style={{ opacity: 0.8, marginBottom: 10, fontSize: 18 }}>
-            Frage {step + 1} von {questions.length}
-          </p>
-          <h2 style={{ fontSize: 36, marginBottom: 20 }}>{questions[step].text}</h2>
-
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <button
-              onClick={() => answer(true)}
+            <h2
               style={{
-                ...answerButtonBase,
-                background: "white",
-                color: "#0f172a",
+                fontSize: 38,
+                marginBottom: 28,
+                lineHeight: 1.25,
+                maxWidth: 780,
               }}
             >
-              Wahr
-            </button>
-            <button
-              onClick={() => answer(false)}
+              {questions[step].text}
+            </h2>
+
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <button
+                onClick={() => answer(true)}
+                style={{
+                  ...answerButtonBase,
+                  background: "white",
+                  color: "#0f172a",
+                }}
+              >
+                Wahr
+              </button>
+              <button
+                onClick={() => answer(false)}
+                style={{
+                  ...answerButtonBase,
+                  background: "transparent",
+                  color: "white",
+                }}
+              >
+                Falsch
+              </button>
+            </div>
+          </>
+        )}
+
+        {screen === "result" && (
+          <>
+            <h1 style={{ fontSize: 50, marginBottom: 10 }}>{currentPercent}%</h1>
+            <p style={{ fontSize: 24, marginBottom: 12 }}>
+              {getResultHeadline(currentPercent)}
+            </p>
+
+            {playerRank && (
+              <>
+                <p style={{ fontSize: 22, marginBottom: 8 }}>{leaderboardText}</p>
+                <p style={{ fontSize: 18, opacity: 0.85, marginBottom: 20 }}>
+                  {betterThanText}
+                </p>
+              </>
+            )}
+
+            <div
               style={{
-                ...answerButtonBase,
-                background: "transparent",
-                color: "white",
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                marginBottom: 24,
               }}
             >
-              Falsch
-            </button>
-          </div>
-        </>
-      )}
+              <button onClick={shareWhatsApp} style={primaryButton}>
+                Freund herausfordern
+              </button>
+              <button onClick={copyChallengeText} style={ghostButton}>
+                {copied ? "Kopiert" : "Challenge-Text kopieren"}
+              </button>
+              <button onClick={openDashboard} style={ghostButton}>
+                Dashboard
+              </button>
+              <button onClick={() => setScreen("create")} style={ghostButton}>
+                Eigenes Quiz
+              </button>
+            </div>
 
-      {screen === "result" && (
-        <>
-          <h1 style={{ fontSize: 50, marginBottom: 10 }}>{currentPercent}%</h1>
-          <p style={{ fontSize: 24, marginBottom: 12 }}>
-            {getResultHeadline(currentPercent)}
-          </p>
+            <div style={{ marginTop: 30, maxWidth: 700 }}>
+              <h2 style={{ fontSize: 32 }}>Leaderboard</h2>
 
-          {playerRank && (
-            <>
-              <p style={{ fontSize: 22, marginBottom: 8 }}>{leaderboardText}</p>
-              <p style={{ fontSize: 18, opacity: 0.85, marginBottom: 20 }}>
-                {betterThanText}
-              </p>
-            </>
-          )}
+              {leaderboard.length === 0 ? (
+                <p>Noch keine Ergebnisse vorhanden.</p>
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {leaderboard.map((entry, index) => (
+                    <div
+                      key={`${entry.player_name}-${index}`}
+                      style={resultRowStyle}
+                    >
+                      <div>
+                        <strong style={{ fontSize: 20 }}>
+                          #{index + 1} {entry.player_name}
+                        </strong>
+                        <div style={{ opacity: 0.8, fontSize: 15 }}>
+                          {entry.score} / {entry.total} richtig
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 24, fontWeight: 700 }}>
+                        {Math.round(Number(entry.percent))}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              marginBottom: 24,
-            }}
-          >
-            <button onClick={shareWhatsApp} style={primaryButton}>
-              Freund herausfordern
-            </button>
-            <button onClick={copyChallengeText} style={ghostButton}>
-              {copied ? "Kopiert" : "Challenge-Text kopieren"}
-            </button>
-            <button onClick={openDashboard} style={ghostButton}>
-              Dashboard
-            </button>
-            <button onClick={() => setScreen("create")} style={ghostButton}>
-              Eigenes Quiz
-            </button>
-          </div>
+        {screen === "dashboard" && (
+          <>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+              <button onClick={() => setScreen("share")} style={primaryButton}>
+                Zurück
+              </button>
+            </div>
 
-          <div style={{ marginTop: 30, maxWidth: 700 }}>
-            <h2 style={{ fontSize: 32 }}>Leaderboard</h2>
+            <h1 style={{ fontSize: 38, marginBottom: 12 }}>Dashboard</h1>
+            <p style={{ fontSize: 20, marginBottom: 24 }}>{quizTitle}</p>
 
-            {leaderboard.length === 0 ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 12,
+                marginBottom: 24,
+                maxWidth: 900,
+              }}
+            >
+              <div style={statCardStyle}>
+                <div style={statLabelStyle}>Teilnehmer</div>
+                <div style={statValueStyle}>{dashboardResults.length}</div>
+              </div>
+              <div style={statCardStyle}>
+                <div style={statLabelStyle}>Durchschnitt</div>
+                <div style={statValueStyle}>
+                  {averagePercent !== null ? `${Math.round(averagePercent)}%` : "-"}
+                </div>
+              </div>
+              <div style={statCardStyle}>
+                <div style={statLabelStyle}>Top-Score</div>
+                <div style={statValueStyle}>
+                  {dashboardResults.length
+                    ? `${Math.round(
+                        Math.max(...dashboardResults.map((r) => Number(r.percent)))
+                      )}%`
+                    : "-"}
+                </div>
+              </div>
+            </div>
+
+            <h2 style={{ fontSize: 30, marginBottom: 14 }}>Ergebnisse</h2>
+
+            {dashboardResults.length === 0 ? (
               <p>Noch keine Ergebnisse vorhanden.</p>
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {leaderboard.map((entry, index) => (
+              <div style={{ display: "grid", gap: 10, maxWidth: 800 }}>
+                {dashboardResults.map((entry, index) => (
                   <div
-                    key={`${entry.player_name}-${index}`}
+                    key={`${entry.player_name}-${index}-dashboard`}
                     style={resultRowStyle}
                   >
                     <div>
@@ -769,80 +937,9 @@ export default function Page() {
                 ))}
               </div>
             )}
-          </div>
-        </>
-      )}
-
-      {screen === "dashboard" && (
-        <>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
-            <button onClick={() => setScreen("share")} style={primaryButton}>
-              Zurück
-            </button>
-          </div>
-
-          <h1 style={{ fontSize: 38, marginBottom: 12 }}>Dashboard</h1>
-          <p style={{ fontSize: 20, marginBottom: 24 }}>{quizTitle}</p>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: 12,
-              marginBottom: 24,
-              maxWidth: 900,
-            }}
-          >
-            <div style={statCardStyle}>
-              <div style={statLabelStyle}>Teilnehmer</div>
-              <div style={statValueStyle}>{dashboardResults.length}</div>
-            </div>
-            <div style={statCardStyle}>
-              <div style={statLabelStyle}>Durchschnitt</div>
-              <div style={statValueStyle}>
-                {averagePercent !== null ? `${Math.round(averagePercent)}%` : "-"}
-              </div>
-            </div>
-            <div style={statCardStyle}>
-              <div style={statLabelStyle}>Top-Score</div>
-              <div style={statValueStyle}>
-                {dashboardResults.length
-                  ? `${Math.round(
-                      Math.max(...dashboardResults.map((r) => Number(r.percent)))
-                    )}%`
-                  : "-"}
-              </div>
-            </div>
-          </div>
-
-          <h2 style={{ fontSize: 30, marginBottom: 14 }}>Ergebnisse</h2>
-
-          {dashboardResults.length === 0 ? (
-            <p>Noch keine Ergebnisse vorhanden.</p>
-          ) : (
-            <div style={{ display: "grid", gap: 10, maxWidth: 800 }}>
-              {dashboardResults.map((entry, index) => (
-                <div
-                  key={`${entry.player_name}-${index}-dashboard`}
-                  style={resultRowStyle}
-                >
-                  <div>
-                    <strong style={{ fontSize: 20 }}>
-                      #{index + 1} {entry.player_name}
-                    </strong>
-                    <div style={{ opacity: 0.8, fontSize: 15 }}>
-                      {entry.score} / {entry.total} richtig
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 24, fontWeight: 700 }}>
-                    {Math.round(Number(entry.percent))}%
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+          </>
+        )}
+      </div>
     </main>
   );
 }
