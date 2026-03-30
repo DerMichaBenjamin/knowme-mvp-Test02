@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 type Screen =
@@ -203,6 +203,29 @@ const invalidQuestionCardStyle: React.CSSProperties = {
   background: "#1f1720",
 };
 
+const swipeCardBaseStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 720,
+  minHeight: 260,
+  borderRadius: 24,
+  background: "#1e293b",
+  border: "1px solid #334155",
+  padding: 24,
+  boxSizing: "border-box",
+  touchAction: "pan-y",
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  alignItems: "center",
+  textAlign: "center",
+  position: "relative",
+  overflow: "hidden",
+  marginBottom: 18,
+  transition: "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+};
+
 const getResultHeadline = (percent: number | null) => {
   if (percent === null) return "";
   if (percent >= 80) return "Stark. Du kennst die Person wirklich gut.";
@@ -236,6 +259,11 @@ export default function Page() {
   const [playerRank, setPlayerRank] = useState<number | null>(null);
   const [dashboardResults, setDashboardResults] = useState<ResultEntry[]>([]);
   const [averagePercent, setAveragePercent] = useState<number | null>(null);
+
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartXRef = useRef<number | null>(null);
+  const swipeThreshold = 90;
 
   useEffect(() => {
     const clean = creatorName.trim();
@@ -311,19 +339,27 @@ export default function Page() {
     return Math.round(((step + 1) / questions.length) * 100);
   }, [step, questions.length]);
 
+  const swipeDirection = dragX > 18 ? "true" : dragX < -18 ? "false" : null;
+
   const generateChallengeText = () => {
     const percent = currentPercent ?? 50;
     const person = creatorName || "diese Person";
 
     if (percent >= 80) {
-      return `Ich kenne ${person} besser als fast alle 😄 (${percent}%)\nSchaffst du das auch?\n${shareUrl}`;
+      return `Ich kenne ${person} besser als fast alle 😄 (${percent}%)
+Schaffst du das auch?
+${shareUrl}`;
     }
 
     if (percent >= 50) {
-      return `Ich dachte ich kenne ${person} gut… (${percent}%) 😅\nDu schaffst bestimmt mehr.\n${shareUrl}`;
+      return `Ich dachte ich kenne ${person} gut… (${percent}%) 😅
+Du schaffst bestimmt mehr.
+${shareUrl}`;
     }
 
-    return `Das war peinlich 😂 nur ${percent}%\nDu bist bestimmt besser.\n${shareUrl}`;
+    return `Das war peinlich 😂 nur ${percent}%
+Du bist bestimmt besser.
+${shareUrl}`;
   };
 
   const shareWhatsApp = () => {
@@ -526,6 +562,7 @@ export default function Page() {
 
     if (step < questions.length - 1) {
       setStep(step + 1);
+      setDragX(0);
       return;
     }
 
@@ -548,6 +585,7 @@ export default function Page() {
       }
     }
 
+    setDragX(0);
     setScreen("result");
   };
 
@@ -557,6 +595,7 @@ export default function Page() {
     setCurrentPercent(null);
     setLeaderboard([]);
     setPlayerRank(null);
+    setDragX(0);
     setScreen("play");
   };
 
@@ -565,6 +604,35 @@ export default function Page() {
     if (!finalQuizId) return;
     await loadDashboard(finalQuizId);
     setScreen("dashboard");
+  };
+
+  const onSwipeStart = (clientX: number) => {
+    dragStartXRef.current = clientX;
+    setIsDragging(true);
+  };
+
+  const onSwipeMove = (clientX: number) => {
+    if (!isDragging || dragStartXRef.current === null) return;
+    const delta = clientX - dragStartXRef.current;
+    setDragX(delta);
+  };
+
+  const onSwipeEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    if (dragX >= swipeThreshold) {
+      void answer(true);
+      return;
+    }
+
+    if (dragX <= -swipeThreshold) {
+      void answer(false);
+      return;
+    }
+
+    setDragX(0);
+    dragStartXRef.current = null;
   };
 
   if (loadingSharedQuiz) {
@@ -833,16 +901,85 @@ export default function Page() {
               />
             </div>
 
-            <h2
+            <div
               style={{
-                fontSize: 38,
-                marginBottom: 28,
-                lineHeight: 1.25,
-                maxWidth: 780,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                maxWidth: 720,
+                marginBottom: 10,
+                fontSize: 16,
+                opacity: 0.75,
               }}
             >
-              {questions[step].text}
-            </h2>
+              <span>← Falsch</span>
+              <span>Wahr →</span>
+            </div>
+
+            <div
+              style={{
+                ...swipeCardBaseStyle,
+                transform: `translateX(${dragX}px) rotate(${dragX / 18}deg)`,
+                boxShadow:
+                  dragX > 18
+                    ? "0 0 0 2px rgba(34,197,94,0.5), 0 25px 40px rgba(0,0,0,0.35)"
+                    : dragX < -18
+                      ? "0 0 0 2px rgba(239,68,68,0.5), 0 25px 40px rgba(0,0,0,0.35)"
+                      : "0 20px 35px rgba(0,0,0,0.25)",
+                borderColor:
+                  dragX > 18 ? "#22c55e" : dragX < -18 ? "#ef4444" : "#334155",
+              }}
+              onTouchStart={(e) => onSwipeStart(e.touches[0].clientX)}
+              onTouchMove={(e) => onSwipeMove(e.touches[0].clientX)}
+              onTouchEnd={onSwipeEnd}
+              onMouseDown={(e) => onSwipeStart(e.clientX)}
+              onMouseMove={(e) => onSwipeMove(e.clientX)}
+              onMouseUp={onSwipeEnd}
+              onMouseLeave={onSwipeEnd}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 18,
+                  left: 18,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#ef4444",
+                  opacity: swipeDirection === "false" ? 1 : 0.25,
+                }}
+              >
+                FALSCH
+              </div>
+
+              <div
+                style={{
+                  position: "absolute",
+                  top: 18,
+                  right: 18,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#22c55e",
+                  opacity: swipeDirection === "true" ? 1 : 0.25,
+                }}
+              >
+                WAHR
+              </div>
+
+              <h2
+                style={{
+                  fontSize: 38,
+                  lineHeight: 1.25,
+                  margin: 0,
+                  maxWidth: 620,
+                }}
+              >
+                {questions[step].text}
+              </h2>
+            </div>
+
+            <p style={{ fontSize: 16, opacity: 0.75, marginBottom: 22 }}>
+              Wische nach links für <strong>Falsch</strong> oder nach rechts für <strong>Wahr</strong>.
+            </p>
 
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
               <button
@@ -1012,3 +1149,4 @@ export default function Page() {
     </main>
   );
 }
+```
