@@ -2,29 +2,39 @@
 
 import { useState } from "react";
 
-const questions = [
+type Q = { text: string; answer: boolean };
+
+const defaultQuestions: Q[] = [
   { text: "Ich trinke lieber Bier als Wein.", answer: true },
   { text: "Ich bin eher ein Morgenmensch.", answer: false },
-  { text: "Ich war schon mal auf Mallorca.", answer: true }
+  { text: "Ich war schon mal auf Mallorca.", answer: true },
+  { text: "Ich esse gerne scharf.", answer: true },
+  { text: "Ich mag keine Hunde.", answer: false }
 ];
 
 export default function Page() {
-  const [screen, setScreen] = useState<"welcome" | "quiz" | "result">("welcome");
+  const [screen, setScreen] = useState<"welcome" | "create" | "quiz" | "result">("welcome");
+  const [questions, setQuestions] = useState<Q[]>(defaultQuestions);
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
 
+  const updateQ = (i: number, patch: Partial<Q>) => {
+    setQuestions(prev => prev.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
+  };
+
+  const startQuiz = () => {
+    setStep(0);
+    setScore(0);
+    setScreen("quiz");
+  };
+
   const answer = (value: boolean) => {
     let nextScore = score;
-    if (value === questions[step].answer) {
-      nextScore += 1;
-      setScore(nextScore);
-    }
+    if (value === questions[step].answer) nextScore += 1;
+    setScore(nextScore);
 
-    if (step < questions.length - 1) {
-      setStep(step + 1);
-    } else {
-      setScreen("result");
-    }
+    if (step < questions.length - 1) setStep(step + 1);
+    else setScreen("result");
   };
 
   const restart = () => {
@@ -34,167 +44,99 @@ export default function Page() {
   };
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: "32px 20px",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        background: "#0f172a",
-        color: "white"
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 760,
-          background: "#1e293b",
-          borderRadius: 20,
-          padding: "28px 24px",
-          boxSizing: "border-box"
-        }}
-      >
+    <main style={{ minHeight: "100vh", padding: "32px 20px", display: "flex", justifyContent: "center", background: "#0f172a", color: "white" }}>
+      <div style={{ width: "100%", maxWidth: 760, background: "#1e293b", borderRadius: 20, padding: "28px 24px" }}>
+
         {screen === "welcome" && (
           <div>
-            <div style={{ fontSize: 14, opacity: 0.75, marginBottom: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              KnowMe MVP
+            <div style={{ fontSize: 14, opacity: 0.75, marginBottom: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}>KnowMe MVP</div>
+            <h1 style={{ fontSize: 42, marginBottom: 16 }}>Wie gut kennen dich deine Freunde wirklich?</h1>
+            <p style={{ fontSize: 22, marginBottom: 28, color: "#cbd5e1" }}>
+              Erstelle ein eigenes Quiz oder teste direkt das Beispiel.
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={() => setScreen("create")} style={btnPrimary}>Eigenes Quiz erstellen</button>
+              <button onClick={startQuiz} style={btnGhost}>Demo spielen</button>
             </div>
-            <h1 style={{ fontSize: 42, lineHeight: 1.1, margin: "0 0 16px 0" }}>
-              Wie gut kennen dich deine Freunde wirklich?
-            </h1>
-            <p style={{ fontSize: 22, lineHeight: 1.5, margin: "0 0 12px 0", color: "#cbd5e1" }}>
-              In diesem Quiz beantworten deine Freunde ein paar Aussagen über dich mit wahr oder falsch.
-            </p>
-            <p style={{ fontSize: 20, lineHeight: 1.5, margin: "0 0 28px 0", color: "#94a3b8" }}>
-              Am Ende bekommen sie eine Punktzahl und können danach selbst ein Quiz erstellen und weiterschicken.
-            </p>
-            <button
-              onClick={() => setScreen("quiz")}
-              style={{
-                fontSize: 22,
-                padding: "16px 22px",
-                borderRadius: 14,
-                border: 0,
-                background: "white",
-                color: "#0f172a",
-                fontWeight: 700,
-                cursor: "pointer"
-              }}
-            >
-              Quiz starten
-            </button>
+          </div>
+        )}
+
+        {screen === "create" && (
+          <div>
+            <h2 style={{ fontSize: 34, marginBottom: 16 }}>Dein Quiz erstellen</h2>
+            <p style={{ fontSize: 18, marginBottom: 20, color: "#94a3b8" }}>Bearbeite die 5 Aussagen und setze die richtigen Antworten.</p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {questions.map((q, i) => (
+                <div key={i} style={{ background: "#0f172a", padding: 14, borderRadius: 12 }}>
+                  <input
+                    value={q.text}
+                    onChange={(e) => updateQ(i, { text: e.target.value })}
+                    style={{ width: "100%", padding: 10, borderRadius: 8, border: "none", marginBottom: 10 }}
+                  />
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => updateQ(i, { answer: true })} style={q.answer ? btnPrimarySmall : btnGhostSmall}>Wahr</button>
+                    <button onClick={() => updateQ(i, { answer: false })} style={!q.answer ? btnPrimarySmall : btnGhostSmall}>Falsch</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 20, display: "flex", gap: 12 }}>
+              <button onClick={startQuiz} style={btnPrimary}>Quiz starten</button>
+              <button onClick={() => setScreen("welcome")} style={btnGhost}>Zurück</button>
+            </div>
           </div>
         )}
 
         {screen === "quiz" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 18, color: "#cbd5e1", fontSize: 18 }}>
-              <span>Frage {step + 1}</span>
-              <span>{step + 1} / {questions.length}</span>
-            </div>
-
-            <div style={{ height: 10, background: "#334155", borderRadius: 999, overflow: "hidden", marginBottom: 26 }}>
-              <div
-                style={{
-                  width: `${((step + 1) / questions.length) * 100}%`,
-                  height: "100%",
-                  background: "white"
-                }}
-              />
-            </div>
-
-            <h2 style={{ fontSize: 36, lineHeight: 1.2, margin: "0 0 28px 0" }}>{questions[step].text}</h2>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <button
-                onClick={() => answer(true)}
-                style={{
-                  fontSize: 24,
-                  padding: "18px 16px",
-                  borderRadius: 14,
-                  border: 0,
-                  background: "white",
-                  color: "#0f172a",
-                  fontWeight: 700,
-                  cursor: "pointer"
-                }}
-              >
-                Wahr
-              </button>
-              <button
-                onClick={() => answer(false)}
-                style={{
-                  fontSize: 24,
-                  padding: "18px 16px",
-                  borderRadius: 14,
-                  border: "1px solid #94a3b8",
-                  background: "transparent",
-                  color: "white",
-                  fontWeight: 700,
-                  cursor: "pointer"
-                }}
-              >
-                Falsch
-              </button>
+            <div style={{ marginBottom: 10 }}>Frage {step + 1} / {questions.length}</div>
+            <h2 style={{ fontSize: 34, marginBottom: 24 }}>{questions[step].text}</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <button onClick={() => answer(true)} style={btnPrimary}>Wahr</button>
+              <button onClick={() => answer(false)} style={btnGhost}>Falsch</button>
             </div>
           </div>
         )}
 
         {screen === "result" && (
           <div>
-            <div style={{ fontSize: 14, opacity: 0.75, marginBottom: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Ergebnis
-            </div>
-            <h1 style={{ fontSize: 48, lineHeight: 1.1, margin: "0 0 12px 0" }}>
-              {score} / {questions.length}
-            </h1>
-            <p style={{ fontSize: 24, lineHeight: 1.5, margin: "0 0 12px 0", color: "#cbd5e1" }}>
-              {score === questions.length
-                ? "Stark. Du kennst die Person wirklich gut."
-                : score >= 2
-                ? "Gar nicht schlecht. Aber da geht noch mehr."
-                : "Das war eher schwierig. Ihr solltet vielleicht nochmal reden."}
-            </p>
-            <p style={{ fontSize: 22, lineHeight: 1.5, margin: "0 0 28px 0", color: "#94a3b8" }}>
-              Jetzt bist du dran: Erstelle dein eigenes Quiz und verschick es an deine Freunde.
-            </p>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
-              <button
-                onClick={restart}
-                style={{
-                  fontSize: 22,
-                  padding: "16px 22px",
-                  borderRadius: 14,
-                  border: 0,
-                  background: "white",
-                  color: "#0f172a",
-                  fontWeight: 700,
-                  cursor: "pointer"
-                }}
-              >
-                Eigenes Quiz erstellen
-              </button>
-              <button
-                onClick={restart}
-                style={{
-                  fontSize: 22,
-                  padding: "16px 22px",
-                  borderRadius: 14,
-                  border: "1px solid #94a3b8",
-                  background: "transparent",
-                  color: "white",
-                  fontWeight: 700,
-                  cursor: "pointer"
-                }}
-              >
-                Nochmal spielen
-              </button>
+            <h1 style={{ fontSize: 48 }}>{score} / {questions.length}</h1>
+            <p style={{ fontSize: 22, marginBottom: 20 }}>Jetzt bist du dran: Erstelle dein eigenes Quiz und verschick es.</p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={() => setScreen("create")} style={btnPrimary}>Eigenes Quiz erstellen</button>
+              <button onClick={restart} style={btnGhost}>Nochmal spielen</button>
             </div>
           </div>
         )}
+
       </div>
     </main>
   );
 }
+
+const btnPrimary = {
+  fontSize: 20,
+  padding: "14px 18px",
+  borderRadius: 12,
+  border: 0,
+  background: "white",
+  color: "#0f172a",
+  fontWeight: 700,
+  cursor: "pointer"
+} as const;
+
+const btnGhost = {
+  fontSize: 20,
+  padding: "14px 18px",
+  borderRadius: 12,
+  border: "1px solid #94a3b8",
+  background: "transparent",
+  color: "white",
+  fontWeight: 700,
+  cursor: "pointer"
+} as const;
+
+const btnPrimarySmall = { ...btnPrimary, fontSize: 16, padding: "10px 14px" } as const;
+const btnGhostSmall = { ...btnGhost, fontSize: 16, padding: "10px 14px" } as const;
