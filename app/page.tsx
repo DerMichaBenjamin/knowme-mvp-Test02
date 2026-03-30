@@ -56,6 +56,7 @@ type Screen =
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
 const supabase =
   supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey)
@@ -80,15 +81,19 @@ export default function Page() {
   const [quizId, setQuizId] = useState("");
   const [shareUrl, setShareUrl] = useState("");
   const [questions, setQuestions] = useState<Question[]>(makeDefaultQuestions());
+
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [playerName, setPlayerName] = useState("");
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
+
   const [averagePercent, setAveragePercent] = useState<number | null>(null);
   const [currentPercent, setCurrentPercent] = useState<number | null>(null);
+
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
   const [dashboardResults, setDashboardResults] = useState<ResultRow[]>([]);
   const [dashboardAttempts, setDashboardAttempts] = useState<AttemptRow[]>([]);
   const [attemptId, setAttemptId] = useState<string | null>(null);
@@ -107,7 +112,9 @@ export default function Page() {
 
   useEffect(() => {
     const cleanName = creatorName.trim();
-    setQuizTitle(cleanName ? `Wie gut kennst du ${cleanName}?` : "Wie gut kennst du ...?");
+    setQuizTitle(
+      cleanName ? `Wie gut kennst du ${cleanName}?` : "Wie gut kennst du ...?"
+    );
   }, [creatorName]);
 
   const canContinueCreate = useMemo(() => {
@@ -186,7 +193,9 @@ export default function Page() {
       return;
     }
 
-    const avg = data.reduce((acc, row) => acc + Number(row.percent || 0), 0) / data.length;
+    const avg =
+      data.reduce((acc, row) => acc + Number(row.percent || 0), 0) / data.length;
+
     setAveragePercent(avg);
   }
 
@@ -210,7 +219,9 @@ export default function Page() {
   }
 
   const updateQuestion = (position: number, patch: Partial<Question>) => {
-    setQuestions((prev) => prev.map((q) => (q.position === position ? { ...q, ...patch } : q)));
+    setQuestions((prev) =>
+      prev.map((q) => (q.position === position ? { ...q, ...patch } : q))
+    );
   };
 
   const addQuestion = () => {
@@ -271,7 +282,11 @@ export default function Page() {
       .single<QuizRow>();
 
     if (quizError || !createdQuiz) {
-      setError(`Quiz konnte nicht gespeichert werden: ${quizError?.message || "unbekannter Fehler"}`);
+      setError(
+        `Quiz konnte nicht gespeichert werden: ${
+          quizError?.message || "unbekannter Fehler"
+        }`
+      );
       setBusy(false);
       return;
     }
@@ -307,6 +322,29 @@ export default function Page() {
       setTimeout(() => setCopied(false), 1200);
     } catch {
       setCopied(false);
+    }
+  };
+
+  const generateChallengeText = () => {
+    const percent = currentPercent ?? 50;
+
+    if (percent >= 80) {
+      return `Ich kenne ${creatorName || "diese Person"} besser als fast alle anderen 😄 (${percent}%)\nSchaffst du das auch?\n${shareUrl}`;
+    }
+
+    if (percent >= 50) {
+      return `Ich dachte, ich kenne ${creatorName || "die Person"} ziemlich gut… (${percent}%) 😅\nDu schaffst bestimmt mehr!\n${shareUrl}`;
+    }
+
+    return `Das war peinlich 😂 nur ${percent}%\nDu bist bestimmt besser!\n${shareUrl}`;
+  };
+
+  const shareResultText = async () => {
+    try {
+      await navigator.clipboard.writeText(generateChallengeText());
+      alert("Challenge-Text kopiert – jetzt einfügen und verschicken.");
+    } catch {
+      alert("Kopieren hat nicht funktioniert.");
     }
   };
 
@@ -352,10 +390,7 @@ export default function Page() {
     const nextStep = step + 1;
 
     if (supabase && attemptId) {
-      await supabase
-        .from("quiz_attempts")
-        .update({ last_step: nextStep })
-        .eq("id", attemptId);
+      await supabase.from("quiz_attempts").update({ last_step: nextStep }).eq("id", attemptId);
     }
 
     if (step < questions.length - 1) {
@@ -424,7 +459,8 @@ export default function Page() {
   const totalStarts = dashboardAttempts.length;
   const totalCompleted = dashboardAttempts.filter((a) => a.is_completed).length;
   const totalAbandoned = dashboardAttempts.filter((a) => !a.is_completed).length;
-  const completionRate = totalStarts > 0 ? Math.round((totalCompleted / totalStarts) * 100) : null;
+  const completionRate =
+    totalStarts > 0 ? Math.round((totalCompleted / totalStarts) * 100) : null;
   const topPercent = dashboardResults.length
     ? Math.max(...dashboardResults.map((r) => Number(r.percent)))
     : null;
@@ -484,11 +520,21 @@ export default function Page() {
             <div style={{ display: "grid", gap: 14 }}>
               {questions.map((q, index) => (
                 <div key={q.position} style={questionCardStyle}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      marginBottom: 8,
+                    }}
+                  >
                     <strong>Frage {index + 1}</strong>
                     <button
                       onClick={() => removeQuestion(q.position)}
-                      style={{ ...btnGhostSmall, opacity: questions.length > 3 ? 1 : 0.45 }}
+                      style={{
+                        ...btnGhostSmall,
+                        opacity: questions.length > 3 ? 1 : 0.45,
+                      }}
                     >
                       Entfernen
                     </button>
@@ -496,7 +542,9 @@ export default function Page() {
 
                   <input
                     value={q.text}
-                    onChange={(e) => updateQuestion(q.position, { text: e.target.value })}
+                    onChange={(e) =>
+                      updateQuestion(q.position, { text: e.target.value })
+                    }
                     style={inputStyle}
                     placeholder="Aussage eingeben"
                   />
@@ -520,13 +568,19 @@ export default function Page() {
             </div>
 
             <div style={{ ...rowStyle, marginTop: 16 }}>
-              <button onClick={addQuestion} style={{ ...btnGhost, opacity: questions.length < 5 ? 1 : 0.45 }}>
+              <button
+                onClick={addQuestion}
+                style={{ ...btnGhost, opacity: questions.length < 5 ? 1 : 0.45 }}
+              >
                 + Frage hinzufügen
               </button>
               <button
                 onClick={createQuizAndShare}
                 disabled={!canContinueCreate || busy}
-                style={{ ...btnPrimary, opacity: canContinueCreate && !busy ? 1 : 0.45 }}
+                style={{
+                  ...btnPrimary,
+                  opacity: canContinueCreate && !busy ? 1 : 0.45,
+                }}
               >
                 {busy ? "Speichert ..." : "Link erstellen"}
               </button>
@@ -560,7 +614,9 @@ export default function Page() {
         {screen === "play_intro" && (
           <div>
             <h2 style={h2Style}>{quizTitle}</h2>
-            <p style={subStyle}>Vor dem Start muss der Teilnehmername eingegeben werden.</p>
+            <p style={subStyle}>
+              Vor dem Start muss der Teilnehmername eingegeben werden.
+            </p>
             <label style={labelStyle}>Dein Name</label>
             <input
               value={playerName}
@@ -587,16 +643,27 @@ export default function Page() {
             </div>
 
             <div style={progressTrackStyle}>
-              <div style={{ ...progressBarStyle, width: `${((step + 1) / questions.length) * 100}%` }} />
+              <div
+                style={{
+                  ...progressBarStyle,
+                  width: `${((step + 1) / questions.length) * 100}%`,
+                }}
+              />
             </div>
 
             <h2 style={h2Style}>{questions[step].text}</h2>
 
             <div style={rowStyle}>
-              <button onClick={() => setSelectedAnswer(true)} style={selectedAnswer === true ? btnPrimary : btnGhost}>
+              <button
+                onClick={() => setSelectedAnswer(true)}
+                style={selectedAnswer === true ? btnPrimary : btnGhost}
+              >
                 Wahr
               </button>
-              <button onClick={() => setSelectedAnswer(false)} style={selectedAnswer === false ? btnPrimary : btnGhost}>
+              <button
+                onClick={() => setSelectedAnswer(false)}
+                style={selectedAnswer === false ? btnPrimary : btnGhost}
+              >
                 Falsch
               </button>
             </div>
@@ -616,17 +683,29 @@ export default function Page() {
         {screen === "result" && (
           <div>
             <div style={smallOverlineStyle}>Ergebnis</div>
-            <h1 style={h1Style}>{score} / {questions.length}</h1>
+            <h1 style={h1Style}>
+              {score} / {questions.length}
+            </h1>
             <p style={pStyle}>Dein aktueller Test liegt bei {currentPercent ?? 0}%.</p>
             <p style={pStyle}>
-              Bisheriger Gesamtdurchschnitt aller Teilnehmer: {averagePercent !== null ? `${Math.round(averagePercent)}%` : "noch keine Daten"}.
+              Bisheriger Gesamtdurchschnitt aller Teilnehmer:{" "}
+              {averagePercent !== null ? `${Math.round(averagePercent)}%` : "noch keine Daten"}.
             </p>
             <p style={subStyle}>{comparisonText}</p>
 
             <div style={rowStyle}>
-              <button onClick={startCreate} style={btnPrimary}>Eigenes Quiz erstellen</button>
-              <button onClick={replayQuiz} style={btnGhost}>Nochmal spielen</button>
-              <button onClick={openDashboard} style={btnGhost}>Dashboard</button>
+              <button onClick={shareResultText} style={btnPrimary}>
+                Ergebnis teilen
+              </button>
+              <button onClick={startCreate} style={btnGhost}>
+                Eigenes Quiz erstellen
+              </button>
+              <button onClick={replayQuiz} style={btnGhost}>
+                Nochmal spielen
+              </button>
+              <button onClick={openDashboard} style={btnGhost}>
+                Dashboard
+              </button>
             </div>
           </div>
         )}
@@ -637,7 +716,14 @@ export default function Page() {
             <h2 style={h2Style}>{quizTitle}</h2>
             <p style={subStyle}>Übersicht über Starts, Abschlüsse und Ergebnisse dieses Quiz.</p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
               <div style={statCardStyle}>
                 <div style={statLabelStyle}>Starts</div>
                 <div style={statValueStyle}>{totalStarts}</div>
@@ -652,18 +738,31 @@ export default function Page() {
               </div>
               <div style={statCardStyle}>
                 <div style={statLabelStyle}>Completion</div>
-                <div style={statValueStyle}>{completionRate !== null ? `${completionRate}%` : "-"}</div>
+                <div style={statValueStyle}>
+                  {completionRate !== null ? `${completionRate}%` : "-"}
+                </div>
               </div>
               <div style={statCardStyle}>
                 <div style={statLabelStyle}>Durchschnitt</div>
-                <div style={statValueStyle}>{averagePercent !== null ? `${Math.round(averagePercent)}%` : "-"}</div>
+                <div style={statValueStyle}>
+                  {averagePercent !== null ? `${Math.round(averagePercent)}%` : "-"}
+                </div>
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
               <div style={statCardStyle}>
                 <div style={statLabelStyle}>Top-Score</div>
-                <div style={statValueStyle}>{topPercent !== null ? `${Math.round(topPercent)}%` : "-"}</div>
+                <div style={statValueStyle}>
+                  {topPercent !== null ? `${Math.round(topPercent)}%` : "-"}
+                </div>
               </div>
               <div style={statCardStyle}>
                 <div style={statLabelStyle}>Gespeicherte Ergebnisse</div>
@@ -673,28 +772,44 @@ export default function Page() {
 
             <h3 style={{ fontSize: 24, margin: "0 0 10px 0" }}>Ergebnisse</h3>
             <div style={{ display: "grid", gap: 10, marginBottom: 18 }}>
-              {dashboardResults.length === 0 && <div style={titleBoxStyle}>Noch keine Ergebnisse vorhanden.</div>}
+              {dashboardResults.length === 0 && (
+                <div style={titleBoxStyle}>Noch keine Ergebnisse vorhanden.</div>
+              )}
               {dashboardResults.map((row, index) => (
                 <div key={`${row.player_name}-${index}`} style={resultRowStyle}>
                   <div>
                     <div style={{ fontSize: 20, fontWeight: 700 }}>{row.player_name}</div>
-                    <div style={{ fontSize: 15, color: "#94a3b8" }}>{row.score} / {row.total} richtig</div>
+                    <div style={{ fontSize: 15, color: "#94a3b8" }}>
+                      {row.score} / {row.total} richtig
+                    </div>
                   </div>
-                  <div style={{ fontSize: 24, fontWeight: 700 }}>{Math.round(Number(row.percent))}%</div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>
+                    {Math.round(Number(row.percent))}%
+                  </div>
                 </div>
               ))}
             </div>
 
             <h3 style={{ fontSize: 24, margin: "0 0 10px 0" }}>Starts & Status</h3>
             <div style={{ display: "grid", gap: 10 }}>
-              {dashboardAttempts.length === 0 && <div style={titleBoxStyle}>Noch keine Starts vorhanden.</div>}
+              {dashboardAttempts.length === 0 && (
+                <div style={titleBoxStyle}>Noch keine Starts vorhanden.</div>
+              )}
               {dashboardAttempts.map((row, index) => (
                 <div key={`${row.player_name}-${index}-attempt`} style={resultRowStyle}>
                   <div>
                     <div style={{ fontSize: 20, fontWeight: 700 }}>{row.player_name}</div>
-                    <div style={{ fontSize: 15, color: "#94a3b8" }}>Letzter Schritt: {row.last_step ?? 0}</div>
+                    <div style={{ fontSize: 15, color: "#94a3b8" }}>
+                      Letzter Schritt: {row.last_step ?? 0}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: row.is_completed ? "#86efac" : "#fca5a5" }}>
+                  <div
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 700,
+                      color: row.is_completed ? "#86efac" : "#fca5a5",
+                    }}
+                  >
                     {row.is_completed ? "Fertig" : "Abbruch / offen"}
                   </div>
                 </div>
@@ -702,8 +817,12 @@ export default function Page() {
             </div>
 
             <div style={{ ...rowStyle, marginTop: 18 }}>
-              <button onClick={() => setScreen("share")} style={btnPrimary}>Zurück zum Teilen</button>
-              <button onClick={() => setScreen("welcome")} style={btnGhost}>Startseite</button>
+              <button onClick={() => setScreen("share")} style={btnPrimary}>
+                Zurück zum Teilen
+              </button>
+              <button onClick={() => setScreen("welcome")} style={btnGhost}>
+                Startseite
+              </button>
             </div>
           </div>
         )}
@@ -730,24 +849,152 @@ const cardStyle = {
   boxSizing: "border-box" as const,
 } as const;
 
-const h1Style = { fontSize: 44, lineHeight: 1.1, margin: "0 0 14px 0" } as const;
-const h2Style = { fontSize: 34, lineHeight: 1.2, margin: "0 0 18px 0" } as const;
-const pStyle = { fontSize: 22, color: "#cbd5e1", lineHeight: 1.5, margin: "0 0 12px 0" } as const;
-const subStyle = { fontSize: 20, color: "#94a3b8", lineHeight: 1.5, margin: "0 0 18px 0" } as const;
-const labelStyle = { display: "block", fontSize: 16, margin: "0 0 8px 0", color: "#cbd5e1" } as const;
-const inputStyle = { width: "100%", padding: 12, borderRadius: 10, border: "none", boxSizing: "border-box" as const, marginBottom: 16 } as const;
-const titleBoxStyle = { padding: 14, borderRadius: 10, background: "#0f172a", marginBottom: 16, color: "#e2e8f0" } as const;
-const questionCardStyle = { background: "#0f172a", padding: 14, borderRadius: 12 } as const;
-const rowStyle = { display: "flex", gap: 12, flexWrap: "wrap" as const } as const;
-const progressTrackStyle = { height: 10, background: "#334155", borderRadius: 999, overflow: "hidden", marginBottom: 22 } as const;
-const progressBarStyle = { height: "100%", background: "white" } as const;
-const smallOverlineStyle = { fontSize: 14, opacity: 0.75, marginBottom: 12, letterSpacing: "0.08em", textTransform: "uppercase" as const } as const;
-const errorStyle = { color: "#fca5a5", fontSize: 18, marginTop: 14 } as const;
-const btnPrimary = { fontSize: 20, padding: "14px 18px", borderRadius: 12, border: 0, background: "white", color: "#0f172a", fontWeight: 700, cursor: "pointer" } as const;
-const btnGhost = { fontSize: 20, padding: "14px 18px", borderRadius: 12, border: "1px solid #94a3b8", background: "transparent", color: "white", fontWeight: 700, cursor: "pointer" } as const;
-const btnPrimarySmall = { ...btnPrimary, fontSize: 16, padding: "9px 12px" } as const;
-const btnGhostSmall = { ...btnGhost, fontSize: 16, padding: "9px 12px" } as const;
-const statCardStyle = { background: "#0f172a", padding: 14, borderRadius: 12 } as const;
-const statLabelStyle = { fontSize: 15, color: "#94a3b8", marginBottom: 6 } as const;
-const statValueStyle = { fontSize: 28, fontWeight: 700 } as const;
-const resultRowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: "#0f172a", padding: 14, borderRadius: 12 } as const;
+const h1Style = {
+  fontSize: 44,
+  lineHeight: 1.1,
+  margin: "0 0 14px 0",
+} as const;
+
+const h2Style = {
+  fontSize: 34,
+  lineHeight: 1.2,
+  margin: "0 0 18px 0",
+} as const;
+
+const pStyle = {
+  fontSize: 22,
+  color: "#cbd5e1",
+  lineHeight: 1.5,
+  margin: "0 0 12px 0",
+} as const;
+
+const subStyle = {
+  fontSize: 20,
+  color: "#94a3b8",
+  lineHeight: 1.5,
+  margin: "0 0 18px 0",
+} as const;
+
+const labelStyle = {
+  display: "block",
+  fontSize: 16,
+  margin: "0 0 8px 0",
+  color: "#cbd5e1",
+} as const;
+
+const inputStyle = {
+  width: "100%",
+  padding: 12,
+  borderRadius: 10,
+  border: "none",
+  boxSizing: "border-box" as const,
+  marginBottom: 16,
+} as const;
+
+const titleBoxStyle = {
+  padding: 14,
+  borderRadius: 10,
+  background: "#0f172a",
+  marginBottom: 16,
+  color: "#e2e8f0",
+} as const;
+
+const questionCardStyle = {
+  background: "#0f172a",
+  padding: 14,
+  borderRadius: 12,
+} as const;
+
+const rowStyle = {
+  display: "flex",
+  gap: 12,
+  flexWrap: "wrap" as const,
+} as const;
+
+const progressTrackStyle = {
+  height: 10,
+  background: "#334155",
+  borderRadius: 999,
+  overflow: "hidden",
+  marginBottom: 22,
+} as const;
+
+const progressBarStyle = {
+  height: "100%",
+  background: "white",
+} as const;
+
+const smallOverlineStyle = {
+  fontSize: 14,
+  opacity: 0.75,
+  marginBottom: 12,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase" as const,
+} as const;
+
+const errorStyle = {
+  color: "#fca5a5",
+  fontSize: 18,
+  marginTop: 14,
+} as const;
+
+const btnPrimary = {
+  fontSize: 20,
+  padding: "14px 18px",
+  borderRadius: 12,
+  border: 0,
+  background: "white",
+  color: "#0f172a",
+  fontWeight: 700,
+  cursor: "pointer",
+} as const;
+
+const btnGhost = {
+  fontSize: 20,
+  padding: "14px 18px",
+  borderRadius: 12,
+  border: "1px solid #94a3b8",
+  background: "transparent",
+  color: "white",
+  fontWeight: 700,
+  cursor: "pointer",
+} as const;
+
+const btnPrimarySmall = {
+  ...btnPrimary,
+  fontSize: 16,
+  padding: "9px 12px",
+} as const;
+
+const btnGhostSmall = {
+  ...btnGhost,
+  fontSize: 16,
+  padding: "9px 12px",
+} as const;
+
+const statCardStyle = {
+  background: "#0f172a",
+  padding: 14,
+  borderRadius: 12,
+} as const;
+
+const statLabelStyle = {
+  fontSize: 15,
+  color: "#94a3b8",
+  marginBottom: 6,
+} as const;
+
+const statValueStyle = {
+  fontSize: 28,
+  fontWeight: 700,
+} as const;
+
+const resultRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  background: "#0f172a",
+  padding: 14,
+  borderRadius: 12,
+} as const;
