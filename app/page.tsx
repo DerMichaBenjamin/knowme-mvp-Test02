@@ -839,6 +839,3 @@ const resultRowStyle = {
 2. committen
 3. Vercel redeployen
 4. im Share- oder Ergebnis-Screen auf **Dashboard** klicken
-
-Wenn du willst, ist der nächste sinnvolle Schritt danach:
-**Starts und Abbrüche tracken**, nicht nur fertige Ergebnisse.
