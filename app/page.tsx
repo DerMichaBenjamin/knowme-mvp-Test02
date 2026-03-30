@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 type Screen =
@@ -50,7 +50,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const pageStyle: React.CSSProperties = {
+const pageStyle: CSSProperties = {
   padding: 20,
   color: "white",
   background: "#0f172a",
@@ -58,13 +58,13 @@ const pageStyle: React.CSSProperties = {
   fontFamily: "Arial, sans-serif",
 };
 
-const containerStyle: React.CSSProperties = {
+const containerStyle: CSSProperties = {
   width: "100%",
   maxWidth: 860,
   margin: "0 auto",
 };
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   display: "block",
   marginBottom: 8,
   padding: 14,
@@ -76,30 +76,29 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const invalidInputStyle: React.CSSProperties = {
+const invalidInputStyle: CSSProperties = {
   ...inputStyle,
   border: "2px solid #ef4444",
   background: "#fff5f5",
   color: "#111827",
 };
 
-const fieldErrorTextStyle: React.CSSProperties = {
+const fieldErrorTextStyle: CSSProperties = {
   color: "#fca5a5",
   fontSize: 15,
   marginBottom: 12,
 };
 
-const linkBoxStyle: React.CSSProperties = {
+const linkBoxStyle: CSSProperties = {
   background: "#1e293b",
   padding: 16,
   borderRadius: 14,
   marginBottom: 18,
   maxWidth: 900,
   wordBreak: "break-all",
-  fontSize: 17,
 };
 
-const primaryButton: React.CSSProperties = {
+const primaryButton: CSSProperties = {
   fontSize: 22,
   padding: "16px 22px",
   borderRadius: 14,
@@ -110,7 +109,7 @@ const primaryButton: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const ghostButton: React.CSSProperties = {
+const ghostButton: CSSProperties = {
   fontSize: 22,
   padding: "16px 22px",
   borderRadius: 14,
@@ -121,7 +120,7 @@ const ghostButton: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const bigPrimaryButton: React.CSSProperties = {
+const bigPrimaryButton: CSSProperties = {
   fontSize: 30,
   padding: "20px 30px",
   borderRadius: 16,
@@ -132,7 +131,7 @@ const bigPrimaryButton: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const answerButtonBase: React.CSSProperties = {
+const answerButtonBase: CSSProperties = {
   fontSize: 30,
   padding: "24px 28px",
   borderRadius: 18,
@@ -143,24 +142,24 @@ const answerButtonBase: React.CSSProperties = {
   fontWeight: 700,
 };
 
-const statCardStyle: React.CSSProperties = {
+const statCardStyle: CSSProperties = {
   background: "#1e293b",
   padding: 16,
   borderRadius: 14,
 };
 
-const statLabelStyle: React.CSSProperties = {
+const statLabelStyle: CSSProperties = {
   fontSize: 15,
   color: "#94a3b8",
   marginBottom: 6,
 };
 
-const statValueStyle: React.CSSProperties = {
+const statValueStyle: CSSProperties = {
   fontSize: 30,
   fontWeight: 700,
 };
 
-const resultRowStyle: React.CSSProperties = {
+const resultRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
@@ -170,7 +169,7 @@ const resultRowStyle: React.CSSProperties = {
   borderRadius: 14,
 };
 
-const warningBoxStyle: React.CSSProperties = {
+const warningBoxStyle: CSSProperties = {
   background: "#3f1d1d",
   color: "#fecaca",
   border: "1px solid #7f1d1d",
@@ -180,7 +179,7 @@ const warningBoxStyle: React.CSSProperties = {
   maxWidth: 720,
 };
 
-const progressTrackStyle: React.CSSProperties = {
+const progressTrackStyle: CSSProperties = {
   width: "100%",
   maxWidth: 700,
   height: 14,
@@ -190,20 +189,20 @@ const progressTrackStyle: React.CSSProperties = {
   marginBottom: 24,
 };
 
-const questionCardStyle: React.CSSProperties = {
+const questionCardStyle: CSSProperties = {
   background: "#111827",
   padding: 16,
   borderRadius: 14,
   marginBottom: 20,
 };
 
-const invalidQuestionCardStyle: React.CSSProperties = {
+const invalidQuestionCardStyle: CSSProperties = {
   ...questionCardStyle,
   border: "1px solid #7f1d1d",
   background: "#1f1720",
 };
 
-const swipeCardBaseStyle: React.CSSProperties = {
+const swipeCardBaseStyle: CSSProperties = {
   width: "100%",
   maxWidth: 720,
   minHeight: 260,
@@ -622,11 +621,13 @@ ${shareUrl}`;
     setIsDragging(false);
 
     if (dragX >= swipeThreshold) {
+      dragStartXRef.current = null;
       void answer(true);
       return;
     }
 
     if (dragX <= -swipeThreshold) {
+      dragStartXRef.current = null;
       void answer(false);
       return;
     }
@@ -1149,4 +1150,3 @@ ${shareUrl}`;
     </main>
   );
 }
-```
