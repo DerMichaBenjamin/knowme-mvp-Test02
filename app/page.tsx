@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-type Screen = "welcome" | "create" | "share" | "play" | "result";
+type Screen = "welcome" | "create" | "share" | "intro" | "play" | "result";
 
 type Question = {
   text: string;
@@ -32,13 +32,71 @@ type ResultEntry = {
   percent: number;
 };
 
+type QuizInsert = {
+  creator_name: string;
+  title: string;
+  question_count: number;
+};
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+const pageStyle: React.CSSProperties = {
+  padding: 40,
+  color: "white",
+  background: "#0f172a",
+  minHeight: "100vh",
+  fontFamily: "Arial, sans-serif",
+};
+
+const inputStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: 16,
+  padding: 10,
+  width: "100%",
+  maxWidth: 500,
+};
+
+const linkBoxStyle: React.CSSProperties = {
+  background: "#1e293b",
+  padding: 14,
+  borderRadius: 12,
+  marginBottom: 18,
+  maxWidth: 800,
+  wordBreak: "break-all",
+};
+
+const answerButtonBase: React.CSSProperties = {
+  marginRight: 8,
+  border: "1px solid white",
+  padding: "10px 14px",
+  cursor: "pointer",
+};
+
+const bigPrimaryButton: React.CSSProperties = {
+  fontSize: 28,
+  padding: "18px 28px",
+  borderRadius: 14,
+  border: 0,
+  background: "white",
+  color: "#0f172a",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const getResultHeadline = (percent: number | null) => {
+  if (percent === null) return "";
+  if (percent >= 80) return "Stark. Du kennst die Person wirklich gut.";
+  if (percent >= 60) return "Nicht schlecht. Da war schon einiges richtig.";
+  if (percent >= 40) return "Ganz okay, aber da geht noch mehr.";
+  return "Autsch. Das war eher geraten.";
+};
+
 export default function Page() {
   const [screen, setScreen] = useState<Screen>("welcome");
+
   const [creatorName, setCreatorName] = useState("");
   const [quizTitle, setQuizTitle] = useState("Wie gut kennst du ...?");
   const [shareUrl, setShareUrl] = useState("");
@@ -85,7 +143,18 @@ export default function Page() {
 
   const leaderboardText = useMemo(() => {
     if (!playerRank) return "";
-    return `Du bist Platz ${playerRank} von ${leaderboard.length}.`;
+    return `Du bist Platz ${playerRank} von ${
+      leaderboard.length >= 10 ? "mindestens 10" : leaderboard.length
+    }.`;
+  }, [playerRank, leaderboard.length]);
+
+  const betterThanText = useMemo(() => {
+    if (!playerRank || leaderboard.length === 0) return "";
+    const betterThan = Math.max(
+      0,
+      Math.round(((leaderboard.length - playerRank) / leaderboard.length) * 100)
+    );
+    return `Du warst besser als ${betterThan}% der bisherigen Teilnehmer.`;
   }, [playerRank, leaderboard.length]);
 
   const generateChallengeText = () => {
@@ -97,10 +166,10 @@ export default function Page() {
     }
 
     if (percent >= 50) {
-      return `Ich dachte ich kenne ${person} gut… (${percent}%) 😅\nDu schaffst mehr!\n${shareUrl}`;
+      return `Ich dachte ich kenne ${person} gut… (${percent}%) 😅\nDu schaffst bestimmt mehr.\n${shareUrl}`;
     }
 
-    return `Das war peinlich 😂 nur ${percent}%\nDu bist besser!\n${shareUrl}`;
+    return `Das war peinlich 😂 nur ${percent}%\nDu bist bestimmt besser.\n${shareUrl}`;
   };
 
   const shareWhatsApp = () => {
@@ -108,13 +177,13 @@ export default function Page() {
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
-  const copyLink = async () => {
+  const copyChallengeText = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(generateChallengeText());
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
     } catch {
-      alert("Link konnte nicht kopiert werden.");
+      alert("Text konnte nicht kopiert werden.");
     }
   };
 
@@ -137,25 +206,31 @@ export default function Page() {
         creator_name: creatorName.trim(),
         title: quizTitle,
         question_count: questions.length,
-      })
+      } satisfies QuizInsert)
       .select("id")
       .single();
 
     if (error || !data) {
-      alert(`Quiz konnte nicht gespeichert werden: ${error?.message || "unbekannter Fehler"}`);
+      alert(
+        `Quiz konnte nicht gespeichert werden: ${
+          error?.message || "unbekannter Fehler"
+        }`
+      );
       return;
     }
 
     const newQuizId = data.id as string;
 
-    const { error: questionError } = await supabase.from("quiz_questions").insert(
-      questions.map((q, i) => ({
-        quiz_id: newQuizId,
-        text: q.text,
-        correct_answer: q.answer,
-        position: i + 1,
-      }))
-    );
+    const { error: questionError } = await supabase
+      .from("quiz_questions")
+      .insert(
+        questions.map((q, i) => ({
+          quiz_id: newQuizId,
+          text: q.text,
+          correct_answer: q.answer,
+          position: i + 1,
+        }))
+      );
 
     if (questionError) {
       alert(`Fragen konnten nicht gespeichert werden: ${questionError.message}`);
@@ -170,6 +245,7 @@ export default function Page() {
     setCurrentPercent(null);
     setLeaderboard([]);
     setPlayerRank(null);
+    setCopied(false);
     setScreen("share");
   };
 
@@ -218,7 +294,8 @@ export default function Page() {
     setCurrentPercent(null);
     setLeaderboard([]);
     setPlayerRank(null);
-    setScreen("share");
+    setCopied(false);
+    setScreen("intro");
     setLoadingSharedQuiz(false);
   };
 
@@ -289,50 +366,31 @@ export default function Page() {
     setScreen("result");
   };
 
+  const startPlay = () => {
+    setStep(0);
+    setScore(0);
+    setCurrentPercent(null);
+    setLeaderboard([]);
+    setPlayerRank(null);
+    setScreen("play");
+  };
+
   if (loadingSharedQuiz) {
     return (
-      <main
-        style={{
-          padding: 40,
-          color: "white",
-          background: "#0f172a",
-          minHeight: "100vh",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
+      <main style={pageStyle}>
         <h2>Lädt...</h2>
       </main>
     );
   }
 
   return (
-    <main
-      style={{
-        padding: 40,
-        color: "white",
-        background: "#0f172a",
-        minHeight: "100vh",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
+    <main style={pageStyle}>
       {screen === "welcome" && (
         <>
           <h1 style={{ fontSize: 42, marginBottom: 16 }}>
             Wie gut kennen dich deine Freunde?
           </h1>
-          <button
-            onClick={() => setScreen("create")}
-            style={{
-              fontSize: 28,
-              padding: "18px 28px",
-              borderRadius: 14,
-              border: 0,
-              background: "white",
-              color: "#0f172a",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={() => setScreen("create")} style={bigPrimaryButton}>
             Quiz erstellen
           </button>
         </>
@@ -346,13 +404,7 @@ export default function Page() {
             placeholder="Dein Name"
             value={creatorName}
             onChange={(e) => setCreatorName(e.target.value)}
-            style={{
-              display: "block",
-              marginBottom: 16,
-              padding: 10,
-              width: "100%",
-              maxWidth: 500,
-            }}
+            style={inputStyle}
           />
 
           <p style={{ marginBottom: 12, opacity: 0.8 }}>
@@ -390,13 +442,7 @@ export default function Page() {
                   copy[i].text = e.target.value;
                   setQuestions(copy);
                 }}
-                style={{
-                  display: "block",
-                  marginBottom: 8,
-                  padding: 10,
-                  width: "100%",
-                  maxWidth: 500,
-                }}
+                style={inputStyle}
               />
 
               <button
@@ -406,11 +452,9 @@ export default function Page() {
                   setQuestions(copy);
                 }}
                 style={{
-                  marginRight: 8,
+                  ...answerButtonBase,
                   background: q.answer === true ? "white" : "transparent",
                   color: q.answer === true ? "#0f172a" : "white",
-                  border: "1px solid white",
-                  padding: "10px 14px",
                 }}
               >
                 Wahr
@@ -423,10 +467,9 @@ export default function Page() {
                   setQuestions(copy);
                 }}
                 style={{
+                  ...answerButtonBase,
                   background: q.answer === false ? "white" : "transparent",
                   color: q.answer === false ? "#0f172a" : "white",
-                  border: "1px solid white",
-                  padding: "10px 14px",
                 }}
               >
                 Falsch
@@ -452,49 +495,69 @@ export default function Page() {
 
       {screen === "share" && (
         <>
-          <h2>Teilen</h2>
-          <p>{shareUrl}</p>
+          <h2>Quiz teilen</h2>
+          <p style={{ maxWidth: 700 }}>
+            Dein Quiz ist fertig. Verschicke jetzt den Link an deine Freunde oder
+            teste es selbst.
+          </p>
+
+          <div style={linkBoxStyle}>{shareUrl}</div>
 
           <button onClick={shareWhatsApp} style={{ marginRight: 8 }}>
             WhatsApp
           </button>
-          <button onClick={copyLink} style={{ marginRight: 8 }}>
-            {copied ? "Kopiert" : "Link kopieren"}
+          <button onClick={copyChallengeText} style={{ marginRight: 8 }}>
+            {copied ? "Kopiert" : "Challenge-Text kopieren"}
           </button>
 
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 24 }}>
             <input
               placeholder="Dein Name"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              style={{
-                display: "block",
-                marginBottom: 12,
-                padding: 10,
-                width: "100%",
-                maxWidth: 500,
-              }}
+              style={inputStyle}
             />
 
-            <button
-              onClick={() => {
-                setStep(0);
-                setScore(0);
-                setCurrentPercent(null);
-                setLeaderboard([]);
-                setPlayerRank(null);
-                setScreen("play");
-              }}
-              disabled={!playerName.trim()}
-            >
+            <button onClick={startPlay} disabled={!playerName.trim()}>
               Test spielen
             </button>
           </div>
         </>
       )}
 
+      {screen === "intro" && (
+        <>
+          <h1 style={{ fontSize: 36, marginBottom: 12 }}>{quizTitle}</h1>
+          <p style={{ fontSize: 20, marginBottom: 8 }}>
+            {questions.length} Fragen · dauert ca. 20 Sekunden
+          </p>
+          <p style={{ marginBottom: 20, opacity: 0.85 }}>
+            Beantworte die Aussagen mit Wahr oder Falsch und schau, wie gut du{" "}
+            {creatorName || "die Person"} wirklich kennst.
+          </p>
+
+          <input
+            placeholder="Dein Name"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            style={inputStyle}
+          />
+
+          <button
+            onClick={startPlay}
+            disabled={!playerName.trim()}
+            style={bigPrimaryButton}
+          >
+            Quiz starten
+          </button>
+        </>
+      )}
+
       {screen === "play" && (
         <>
+          <p style={{ opacity: 0.8, marginBottom: 10 }}>
+            Frage {step + 1} von {questions.length}
+          </p>
           <h2>{questions[step].text}</h2>
 
           <button onClick={() => answer(true)} style={{ marginRight: 8 }}>
@@ -506,20 +569,34 @@ export default function Page() {
 
       {screen === "result" && (
         <>
-          <h1>{currentPercent}%</h1>
+          <h1 style={{ fontSize: 44, marginBottom: 10 }}>{currentPercent}%</h1>
+          <p style={{ fontSize: 22, marginBottom: 12 }}>
+            {getResultHeadline(currentPercent)}
+          </p>
 
           {playerRank && (
-            <p style={{ fontSize: 22, marginBottom: 16 }}>{leaderboardText}</p>
+            <>
+              <p style={{ fontSize: 22, marginBottom: 8 }}>{leaderboardText}</p>
+              <p style={{ fontSize: 18, opacity: 0.85, marginBottom: 20 }}>
+                {betterThanText}
+              </p>
+            </>
           )}
 
-          <button onClick={shareWhatsApp} style={{ marginRight: 8 }}>
-            WhatsApp teilen
-          </button>
-          <button onClick={copyLink} style={{ marginRight: 8 }}>
-            {copied ? "Kopiert" : "Link kopieren"}
-          </button>
-
-          <button onClick={() => setScreen("create")}>Eigenes Quiz</button>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+              marginBottom: 24,
+            }}
+          >
+            <button onClick={shareWhatsApp}>Freund herausfordern</button>
+            <button onClick={copyChallengeText}>
+              {copied ? "Kopiert" : "Challenge-Text kopieren"}
+            </button>
+            <button onClick={() => setScreen("create")}>Eigenes Quiz</button>
+          </div>
 
           <div style={{ marginTop: 30, maxWidth: 600 }}>
             <h2>Leaderboard</h2>
