@@ -2,81 +2,124 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Q = { text: string; answer: boolean | null };
+type Q = { id: string; text: string; answer: boolean | null };
+type Result = { name: string; score: number; total: number };
 
-type Result = { score: number; total: number };
+const uid = () => Math.random().toString(36).slice(2, 9);
 
-const defaultQuestions: Q[] = [
-  { text: "Ich trinke lieber Bier als Wein.", answer: null },
-  { text: "Ich bin eher ein Morgenmensch.", answer: null },
-  { text: "Ich war schon mal auf Mallorca.", answer: null },
-  { text: "Ich esse gerne scharf.", answer: null },
-  { text: "Ich mag keine Hunde.", answer: null }
+const makeDefaults = (): Q[] => [
+  { id: uid(), text: "Ich trinke lieber Bier als Wein.", answer: null },
+  { id: uid(), text: "Ich bin eher ein Morgenmensch.", answer: null },
+  { id: uid(), text: "Ich war schon mal auf Mallorca.", answer: null },
 ];
 
-const demoQuizAnswers = [true, false, true, true, false];
-
 export default function Page() {
-  const [screen, setScreen] = useState<"welcome" | "create" | "quiz" | "result">("welcome");
-  const [questions, setQuestions] = useState<Q[]>(defaultQuestions);
+  const [screen, setScreen] = useState<"welcome" | "create" | "share" | "play_intro" | "quiz" | "result">("welcome");
+  const [questions, setQuestions] = useState<Q[]>(makeDefaults());
+  const [answersKey, setAnswersKey] = useState<boolean[]>([]);
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [results, setResults] = useState<Result[]>([]);
+  const [playerName, setPlayerName] = useState("");
+  const [quizId, setQuizId] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("knowme-results");
-      if (saved) setResults(JSON.parse(saved));
+      const r = localStorage.getItem("knowme-results");
+      if (r) setResults(JSON.parse(r));
     } catch {}
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("knowme-results", JSON.stringify(results));
-    } catch {}
+    try { localStorage.setItem("knowme-results", JSON.stringify(results)); } catch {}
   }, [results]);
 
-  const averageScore = useMemo(() => {
+  const average = useMemo(() => {
     if (!results.length) return null;
-    const totalScores = results.reduce((acc, item) => acc + item.score, 0);
-    return (totalScores / results.length).toFixed(1);
+    const s = results.reduce((a, b) => a + b.score, 0);
+    return (s / results.length).toFixed(1);
   }, [results]);
 
-  const updateQ = (i: number, patch: Partial<Q>) => {
-    setQuestions(prev => prev.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
+  const canStartCreated = questions.length >= 3 && questions.length <= 5 && questions.every(q => q.text.trim() && q.answer !== null);
+
+  const updateQ = (id: string, patch: Partial<Q>) => {
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...patch } : q));
   };
 
-  const startQuiz = () => {
-    setStep(0);
-    setScore(0);
-    setScreen("quiz");
+  const addQ = () => {
+    if (questions.length >= 5) return;
+    setQuestions(prev => [...prev, { id: uid(), text: "", answer: null }]);
   };
 
-  const startOwnQuizCreation = () => {
-    setQuestions(defaultQuestions);
-    setStep(0);
-    setScore(0);
+  const removeQ = (id: string) => {
+    if (questions.length <= 3) return;
+    setQuestions(prev => prev.filter(q => q.id !== id));
+  };
+
+  const startCreate = () => {
+    setQuestions(makeDefaults());
     setScreen("create");
   };
 
-  const canStartCreatedQuiz = questions.every(q => q.text.trim() && q.answer !== null);
+  const toShare = () => {
+    const id = uid();
+    const key = questions.map(q => q.answer as boolean);
+    setAnswersKey(key);
+    setQuizId(id);
+    const url = `${window.location.origin}/?q=${id}`; // simple link (MVP)
+    setShareUrl(url);
+    try { localStorage.setItem(`quiz-${id}`, JSON.stringify({ questions, key })); } catch {}
+    setScreen("share");
+  };
 
-  const answer = (value: boolean) => {
-    let nextScore = score;
-    const correctAnswers = questions.map((q, i) => q.answer ?? demoQuizAnswers[i]);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(shareUrl); } catch {}
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
 
-    if (value === correctAnswers[step]) nextScore += 1;
+  const loadFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("q");
+    if (!id) return false;
+    try {
+      const raw = localStorage.getItem(`quiz-${id}`);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      setQuestions(parsed.questions);
+      setAnswersKey(parsed.key);
+      setQuizId(id);
+      return true;
+    } catch { return false; }
+  };
+
+  const startPlay = () => {
+    const loaded = loadFromUrl();
+    if (!loaded && answersKey.length === 0) {
+      // fallback: use current questions with answers as key
+      setAnswersKey(questions.map(q => q.answer ?? false));
+    }
+    setPlayerName("");
+    setStep(0);
+    setScore(0);
+    setScreen("play_intro");
+  };
+
+  const answer = (v: boolean) => {
+    const correct = answersKey[step];
+    const nextScore = score + (v === correct ? 1 : 0);
     setScore(nextScore);
-
     if (step < questions.length - 1) {
-      setStep(step + 1);
+      setStep(s => s + 1);
     } else {
-      setResults(prev => [...prev, { score: nextScore, total: questions.length }]);
+      setResults(prev => [{ name: playerName || "Anonymous", score: nextScore, total: questions.length }, ...prev]);
       setScreen("result");
     }
   };
 
-  const restartQuizDirectly = () => {
+  const restartDirect = () => {
     setStep(0);
     setScore(0);
     setScreen("quiz");
@@ -88,67 +131,67 @@ export default function Page() {
 
         {screen === "welcome" && (
           <div>
-            <div style={{ fontSize: 14, opacity: 0.75, marginBottom: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}>KnowMe MVP</div>
-            <h1 style={{ fontSize: 42, marginBottom: 16, lineHeight: 1.1 }}>Wie gut kennen dich deine Freunde wirklich?</h1>
-            <p style={{ fontSize: 22, marginBottom: 12, color: "#cbd5e1", lineHeight: 1.5 }}>
-              Erstelle ein eigenes Quiz oder teste direkt das Beispiel.
-            </p>
-            <p style={{ fontSize: 20, marginBottom: 28, color: "#94a3b8", lineHeight: 1.5 }}>
-              Am Ende sehen die Teilnehmer ihren Score und du kannst das Quiz weiterschicken.
-            </p>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button onClick={startOwnQuizCreation} style={btnPrimary}>Eigenes Quiz erstellen</button>
-              <button
-                onClick={() => {
-                  setQuestions(defaultQuestions);
-                  startQuiz();
-                }}
-                style={btnGhost}
-              >
-                Demo spielen
-              </button>
+            <h1 style={{ fontSize: 42, marginBottom: 16 }}>Wie gut kennen dich deine Freunde wirklich?</h1>
+            <p style={{ fontSize: 20, marginBottom: 24, color: "#cbd5e1" }}>Erstelle ein Quiz (3–5 Fragen) oder spiele eins.</p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={startCreate} style={btnPrimary}>Eigenes Quiz</button>
+              <button onClick={startPlay} style={btnGhost}>Quiz spielen</button>
             </div>
           </div>
         )}
 
         {screen === "create" && (
           <div>
-            <h2 style={{ fontSize: 34, marginBottom: 16 }}>Dein Quiz erstellen</h2>
-            <p style={{ fontSize: 18, marginBottom: 20, color: "#94a3b8", lineHeight: 1.5 }}>
-              Bearbeite die 5 Aussagen und setze die richtigen Antworten. Nichts ist vorausgewählt.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <h2 style={{ fontSize: 32, marginBottom: 12 }}>Quiz erstellen (3–5 Fragen)</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {questions.map((q, i) => (
-                <div key={i} style={{ background: "#0f172a", padding: 14, borderRadius: 12 }}>
-                  <input
-                    value={q.text}
-                    onChange={(e) => updateQ(i, { text: e.target.value })}
-                    style={{ width: "100%", padding: 10, borderRadius: 8, border: "none", marginBottom: 10, boxSizing: "border-box" }}
-                  />
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => updateQ(i, { answer: true })} style={q.answer === true ? btnPrimarySmall : btnGhostSmall}>Wahr</button>
-                    <button onClick={() => updateQ(i, { answer: false })} style={q.answer === false ? btnPrimarySmall : btnGhostSmall}>Falsch</button>
+                <div key={q.id} style={{ background: "#0f172a", padding: 12, borderRadius: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <strong>Frage {i + 1}</strong>
+                    <button onClick={() => removeQ(q.id)} style={{ ...btnGhostSmall, opacity: questions.length > 3 ? 1 : 0.4 }}>x</button>
+                  </div>
+                  <input value={q.text} onChange={e => updateQ(q.id, { text: e.target.value })} style={input} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <button onClick={() => updateQ(q.id, { answer: true })} style={q.answer === true ? btnPrimarySmall : btnGhostSmall}>Wahr</button>
+                    <button onClick={() => updateQ(q.id, { answer: false })} style={q.answer === false ? btnPrimarySmall : btnGhostSmall}>Falsch</button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div style={{ marginTop: 20, display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button onClick={startQuiz} style={{ ...btnPrimary, opacity: canStartCreatedQuiz ? 1 : 0.5, cursor: canStartCreatedQuiz ? "pointer" : "not-allowed" }} disabled={!canStartCreatedQuiz}>Quiz starten</button>
-              <button onClick={() => setScreen("welcome")} style={btnGhost}>Zurück</button>
+            <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
+              <button onClick={addQ} style={{ ...btnGhost, opacity: questions.length < 5 ? 1 : 0.4 }}>+ Frage</button>
+              <button onClick={toShare} disabled={!canStartCreated} style={{ ...btnPrimary, opacity: canStartCreated ? 1 : 0.4 }}>Weiter / Link erstellen</button>
+            </div>
+          </div>
+        )}
+
+        {screen === "share" && (
+          <div>
+            <h2 style={{ fontSize: 32, marginBottom: 12 }}>Link teilen</h2>
+            <div style={{ background: "#0f172a", padding: 12, borderRadius: 10, marginBottom: 12 }}>{shareUrl}</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={copy} style={btnPrimary}>{copied ? "Kopiert" : "Link kopieren"}</button>
+              <button onClick={startPlay} style={btnGhost}>Vorschau spielen</button>
+            </div>
+          </div>
+        )}
+
+        {screen === "play_intro" && (
+          <div>
+            <h2 style={{ fontSize: 28, marginBottom: 12 }}>Name eingeben</h2>
+            <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={input} placeholder="Dein Name" />
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => setScreen("quiz")} disabled={!playerName.trim()} style={{ ...btnPrimary, opacity: playerName.trim() ? 1 : 0.4 }}>Start</button>
             </div>
           </div>
         )}
 
         {screen === "quiz" && (
           <div>
-            <div style={{ marginBottom: 10, fontSize: 18, color: "#cbd5e1" }}>Frage {step + 1} / {questions.length}</div>
-            <div style={{ height: 10, background: "#334155", borderRadius: 999, overflow: "hidden", marginBottom: 24 }}>
-              <div style={{ width: `${((step + 1) / questions.length) * 100}%`, height: "100%", background: "white" }} />
-            </div>
-            <h2 style={{ fontSize: 34, marginBottom: 24, lineHeight: 1.25 }}>{questions[step].text}</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ marginBottom: 10 }}>Frage {step + 1} / {questions.length}</div>
+            <h2 style={{ fontSize: 32, marginBottom: 20 }}>{questions[step].text}</h2>
+            <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => answer(true)} style={btnPrimary}>Wahr</button>
               <button onClick={() => answer(false)} style={btnGhost}>Falsch</button>
             </div>
@@ -157,53 +200,22 @@ export default function Page() {
 
         {screen === "result" && (
           <div>
-            <div style={{ fontSize: 14, opacity: 0.75, marginBottom: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}>Ergebnis</div>
-            <h1 style={{ fontSize: 48, lineHeight: 1.1, marginBottom: 12 }}>{score} / {questions.length}</h1>
-            <p style={{ fontSize: 22, marginBottom: 12, color: "#cbd5e1", lineHeight: 1.5 }}>
-              {score === questions.length
-                ? "Stark. Du kennst die Person wirklich gut."
-                : score >= 3
-                ? "Gar nicht schlecht. Aber da geht noch mehr."
-                : "Das war eher schwierig. Ihr solltet vielleicht nochmal reden."}
-            </p>
-            <p style={{ fontSize: 20, marginBottom: 10, color: "#94a3b8", lineHeight: 1.5 }}>
-              Durchschnitt aller bisherigen Teilnehmer: {averageScore !== null ? `${averageScore} / ${questions.length}` : "noch keine Daten"}
-            </p>
-            <p style={{ fontSize: 22, marginBottom: 28, color: "#94a3b8", lineHeight: 1.5 }}>
-              Jetzt bist du dran: Erstelle dein eigenes Quiz und verschick es.
-            </p>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button onClick={startOwnQuizCreation} style={btnPrimary}>Eigenes Quiz erstellen</button>
-              <button onClick={restartQuizDirectly} style={btnGhost}>Nochmal spielen</button>
+            <h1 style={{ fontSize: 44 }}>{score} / {questions.length}</h1>
+            <p style={{ marginBottom: 10, color: "#cbd5e1" }}>Durchschnitt: {average ? `${average} / ${questions.length}` : "noch keine Daten"}</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={startCreate} style={btnPrimary}>Eigenes Quiz</button>
+              <button onClick={restartDirect} style={btnGhost}>Nochmal spielen</button>
             </div>
           </div>
         )}
+
       </div>
     </main>
   );
 }
 
-const btnPrimary = {
-  fontSize: 20,
-  padding: "14px 18px",
-  borderRadius: 12,
-  border: 0,
-  background: "white",
-  color: "#0f172a",
-  fontWeight: 700,
-  cursor: "pointer"
-} as const;
-
-const btnGhost = {
-  fontSize: 20,
-  padding: "14px 18px",
-  borderRadius: 12,
-  border: "1px solid #94a3b8",
-  background: "transparent",
-  color: "white",
-  fontWeight: 700,
-  cursor: "pointer"
-} as const;
-
-const btnPrimarySmall = { ...btnPrimary, fontSize: 16, padding: "10px 14px" } as const;
-const btnGhostSmall = { ...btnGhost, fontSize: 16, padding: "10px 14px" } as const;
+const input = { width: "100%", padding: 10, borderRadius: 8, border: "none" } as const;
+const btnPrimary = { padding: "12px 16px", borderRadius: 10, border: 0, background: "white", color: "#0f172a", fontWeight: 700 } as const;
+const btnGhost = { padding: "12px 16px", borderRadius: 10, border: "1px solid #94a3b8", background: "transparent", color: "white", fontWeight: 700 } as const;
+const btnPrimarySmall = { ...btnPrimary, padding: "8px 12px" } as const;
+const btnGhostSmall = { ...btnGhost, padding: "8px 12px" } as const;
