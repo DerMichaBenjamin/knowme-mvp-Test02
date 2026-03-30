@@ -25,6 +25,7 @@ export default function Page() {
   const [quizTitle, setQuizTitle] = useState("Wie gut kennst du ...?");
   const [shareUrl, setShareUrl] = useState("");
   const [quizId, setQuizId] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const [questions, setQuestions] = useState<Question[]>([
     { text: "", answer: null },
@@ -68,23 +69,24 @@ export default function Page() {
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
-  const shareOther = async () => {
-    const text = generateChallengeText();
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          text,
-          url: shareUrl,
-        });
-        return;
-      } catch {
-        // ignore cancel
-      }
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      alert("Link konnte nicht kopiert werden.");
     }
+  };
 
-    await navigator.clipboard.writeText(text);
-    alert("Text kopiert – jetzt in Instagram oder TikTok einfügen");
+  const addQuestion = () => {
+    if (questions.length >= 5) return;
+    setQuestions((prev) => [...prev, { text: "", answer: null }]);
+  };
+
+  const removeQuestion = (index: number) => {
+    if (questions.length <= 3) return;
+    setQuestions((prev) => prev.filter((_, i) => i !== index));
   };
 
   const createQuiz = async () => {
@@ -183,8 +185,26 @@ export default function Page() {
             style={{ display: "block", marginBottom: 16, padding: 10, width: "100%", maxWidth: 500 }}
           />
 
+          <p style={{ marginBottom: 12, opacity: 0.8 }}>
+            Du kannst 3 bis 5 Fragen erstellen.
+          </p>
+
           {questions.map((q, i) => (
             <div key={i} style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                <strong>Frage {i + 1}</strong>
+                <button
+                  onClick={() => removeQuestion(i)}
+                  disabled={questions.length <= 3}
+                  style={{
+                    opacity: questions.length <= 3 ? 0.4 : 1,
+                    padding: "6px 10px",
+                  }}
+                >
+                  Entfernen
+                </button>
+              </div>
+
               <input
                 placeholder={`Frage ${i + 1}`}
                 value={q.text}
@@ -231,6 +251,16 @@ export default function Page() {
             </div>
           ))}
 
+          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+            <button
+              onClick={addQuestion}
+              disabled={questions.length >= 5}
+              style={{ opacity: questions.length >= 5 ? 0.4 : 1 }}
+            >
+              + Frage hinzufügen
+            </button>
+          </div>
+
           <button onClick={createQuiz} disabled={!canCreate}>
             Link erstellen
           </button>
@@ -245,8 +275,8 @@ export default function Page() {
           <button onClick={shareWhatsApp} style={{ marginRight: 8 }}>
             WhatsApp
           </button>
-          <button onClick={shareOther} style={{ marginRight: 8 }}>
-            Instagram / TikTok
+          <button onClick={copyLink} style={{ marginRight: 8 }}>
+            {copied ? "Kopiert" : "Link kopieren"}
           </button>
 
           <div style={{ marginTop: 20 }}>
@@ -282,8 +312,8 @@ export default function Page() {
           <button onClick={shareWhatsApp} style={{ marginRight: 8 }}>
             WhatsApp teilen
           </button>
-          <button onClick={shareOther} style={{ marginRight: 8 }}>
-            Instagram / TikTok
+          <button onClick={copyLink} style={{ marginRight: 8 }}>
+            {copied ? "Kopiert" : "Link kopieren"}
           </button>
 
           <button onClick={() => setScreen("create")}>Eigenes Quiz</button>
