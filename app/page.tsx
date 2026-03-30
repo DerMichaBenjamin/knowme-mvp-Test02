@@ -41,7 +41,8 @@ type Screen =
   | "share"
   | "play_intro"
   | "quiz"
-  | "result";
+  | "result"
+  | "dashboard";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -78,6 +79,7 @@ export default function Page() {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [dashboardResults, setDashboardResults] = useState<ResultRow[]>([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -172,16 +174,29 @@ export default function Page() {
       return;
     }
 
-    const avg =
-      data.reduce((acc, row) => acc + Number(row.percent || 0), 0) / data.length;
-
+    const avg = data.reduce((acc, row) => acc + Number(row.percent || 0), 0) / data.length;
     setAveragePercent(avg);
   }
 
+  async function loadDashboard(id: string) {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("quiz_results")
+      .select("id, quiz_id, player_name, score, total, percent")
+      .eq("quiz_id", id)
+      .order("percent", { ascending: false });
+
+    if (error || !data) {
+      setDashboardResults([]);
+      return;
+    }
+
+    setDashboardResults(data as ResultRow[]);
+  }
+
   const updateQuestion = (position: number, patch: Partial<Question>) => {
-    setQuestions((prev) =>
-      prev.map((q) => (q.position === position ? { ...q, ...patch } : q))
-    );
+    setQuestions((prev) => prev.map((q) => (q.position === position ? { ...q, ...patch } : q)));
   };
 
   const addQuestion = () => {
@@ -210,6 +225,7 @@ export default function Page() {
     setPlayerName("");
     setCurrentPercent(null);
     setAveragePercent(null);
+    setDashboardResults([]);
     setError("");
     setScreen("create");
   };
@@ -278,6 +294,13 @@ export default function Page() {
     }
   };
 
+  const openDashboard = async () => {
+    if (!quizId) return;
+    await refreshAveragePercent(quizId);
+    await loadDashboard(quizId);
+    setScreen("dashboard");
+  };
+
   const beginQuiz = () => {
     setStep(0);
     setScore(0);
@@ -341,6 +364,11 @@ export default function Page() {
 
     return `Du liegst genau auf dem bisherigen Durchschnitt von ${roundedAverage}%.`;
   }, [currentPercent, averagePercent]);
+
+  const totalParticipants = dashboardResults.length;
+  const topPercent = dashboardResults.length
+    ? Math.max(...dashboardResults.map((r) => Number(r.percent)))
+    : null;
 
   if (screen === "loading") {
     return (
@@ -481,6 +509,9 @@ export default function Page() {
               <button onClick={() => setScreen("play_intro")} style={btnGhost}>
                 Vorschau spielen
               </button>
+              <button onClick={openDashboard} style={btnGhost}>
+                Dashboard
+              </button>
             </div>
           </div>
         )}
@@ -574,6 +605,52 @@ export default function Page() {
               <button onClick={replayQuiz} style={btnGhost}>
                 Nochmal spielen
               </button>
+              <button onClick={openDashboard} style={btnGhost}>
+                Dashboard
+              </button>
+            </div>
+          </div>
+        )}
+
+        {screen === "dashboard" && (
+          <div>
+            <div style={smallOverlineStyle}>Dashboard</div>
+            <h2 style={h2Style}>{quizTitle}</h2>
+            <p style={subStyle}>Übersicht über alle bisherigen Teilnahmen dieses Quiz.</p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
+              <div style={statCardStyle}>
+                <div style={statLabelStyle}>Teilnehmer</div>
+                <div style={statValueStyle}>{totalParticipants}</div>
+              </div>
+              <div style={statCardStyle}>
+                <div style={statLabelStyle}>Durchschnitt</div>
+                <div style={statValueStyle}>{averagePercent !== null ? `${Math.round(averagePercent)}%` : "-"}</div>
+              </div>
+              <div style={statCardStyle}>
+                <div style={statLabelStyle}>Top-Score</div>
+                <div style={statValueStyle}>{topPercent !== null ? `${Math.round(topPercent)}%` : "-"}</div>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              {dashboardResults.length === 0 && (
+                <div style={titleBoxStyle}>Noch keine Teilnahmen vorhanden.</div>
+              )}
+              {dashboardResults.map((row, index) => (
+                <div key={`${row.player_name}-${index}`} style={resultRowStyle}>
+                  <div>
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>{row.player_name}</div>
+                    <div style={{ fontSize: 15, color: "#94a3b8" }}>{row.score} / {row.total} richtig</div>
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>{Math.round(Number(row.percent))}%</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ ...rowStyle, marginTop: 18 }}>
+              <button onClick={() => setScreen("share")} style={btnPrimary}>Zurück zum Teilen</button>
+              <button onClick={() => setScreen("welcome")} style={btnGhost}>Startseite</button>
             </div>
           </div>
         )}
@@ -598,7 +675,7 @@ const cardStyle = {
   borderRadius: 20,
   padding: "28px 24px",
   boxSizing: "border-box" as const,
-};
+} as const;
 
 const h1Style = {
   fontSize: 44,
@@ -722,3 +799,46 @@ const btnGhostSmall = {
   fontSize: 16,
   padding: "9px 12px",
 } as const;
+
+const statCardStyle = {
+  background: "#0f172a",
+  padding: 14,
+  borderRadius: 12,
+} as const;
+
+const statLabelStyle = {
+  fontSize: 15,
+  color: "#94a3b8",
+  marginBottom: 6,
+} as const;
+
+const statValueStyle = {
+  fontSize: 28,
+  fontWeight: 700,
+} as const;
+
+const resultRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  background: "#0f172a",
+  padding: 14,
+  borderRadius: 12,
+} as const;
+```
+
+## Was das neue Dashboard zeigt
+- Anzahl Teilnehmer
+- Durchschnitt in Prozent
+- Top-Score in Prozent
+- Liste aller Teilnehmer mit Score und Prozent
+
+## Danach
+1. Datei speichern
+2. committen
+3. Vercel redeployen
+4. im Share- oder Ergebnis-Screen auf **Dashboard** klicken
+
+Wenn du willst, ist der nächste sinnvolle Schritt danach:
+**Starts und Abbrüche tracken**, nicht nur fertige Ergebnisse.
