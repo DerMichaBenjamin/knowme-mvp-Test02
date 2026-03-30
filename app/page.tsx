@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-type Screen = "welcome" | "create" | "share" | "intro" | "play" | "result";
+type Screen =
+  | "welcome"
+  | "create"
+  | "share"
+  | "intro"
+  | "play"
+  | "result"
+  | "dashboard";
 
 type Question = {
   text: string;
@@ -44,7 +51,7 @@ const supabase = createClient(
 );
 
 const pageStyle: React.CSSProperties = {
-  padding: 40,
+  padding: 24,
   color: "white",
   background: "#0f172a",
   minHeight: "100vh",
@@ -54,36 +61,92 @@ const pageStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
   display: "block",
   marginBottom: 16,
-  padding: 10,
+  padding: 14,
   width: "100%",
-  maxWidth: 500,
+  maxWidth: 560,
+  borderRadius: 12,
+  border: "none",
+  fontSize: 18,
+  boxSizing: "border-box",
 };
 
 const linkBoxStyle: React.CSSProperties = {
   background: "#1e293b",
-  padding: 14,
-  borderRadius: 12,
+  padding: 16,
+  borderRadius: 14,
   marginBottom: 18,
-  maxWidth: 800,
+  maxWidth: 900,
   wordBreak: "break-all",
+  fontSize: 17,
 };
 
-const answerButtonBase: React.CSSProperties = {
-  marginRight: 8,
-  border: "1px solid white",
-  padding: "10px 14px",
-  cursor: "pointer",
-};
-
-const bigPrimaryButton: React.CSSProperties = {
-  fontSize: 28,
-  padding: "18px 28px",
+const primaryButton: React.CSSProperties = {
+  fontSize: 22,
+  padding: "16px 22px",
   borderRadius: 14,
   border: 0,
   background: "white",
   color: "#0f172a",
   fontWeight: 700,
   cursor: "pointer",
+};
+
+const ghostButton: React.CSSProperties = {
+  fontSize: 22,
+  padding: "16px 22px",
+  borderRadius: 14,
+  border: "1px solid #94a3b8",
+  background: "transparent",
+  color: "white",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const bigPrimaryButton: React.CSSProperties = {
+  fontSize: 30,
+  padding: "20px 30px",
+  borderRadius: 16,
+  border: 0,
+  background: "white",
+  color: "#0f172a",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const answerButtonBase: React.CSSProperties = {
+  fontSize: 26,
+  padding: "18px 24px",
+  borderRadius: 14,
+  border: "1px solid white",
+  cursor: "pointer",
+  minWidth: 150,
+};
+
+const statCardStyle: React.CSSProperties = {
+  background: "#1e293b",
+  padding: 16,
+  borderRadius: 14,
+};
+
+const statLabelStyle: React.CSSProperties = {
+  fontSize: 15,
+  color: "#94a3b8",
+  marginBottom: 6,
+};
+
+const statValueStyle: React.CSSProperties = {
+  fontSize: 30,
+  fontWeight: 700,
+};
+
+const resultRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  background: "#1e293b",
+  padding: 16,
+  borderRadius: 14,
 };
 
 const getResultHeadline = (percent: number | null) => {
@@ -117,6 +180,8 @@ export default function Page() {
 
   const [leaderboard, setLeaderboard] = useState<ResultEntry[]>([]);
   const [playerRank, setPlayerRank] = useState<number | null>(null);
+  const [dashboardResults, setDashboardResults] = useState<ResultEntry[]>([]);
+  const [averagePercent, setAveragePercent] = useState<number | null>(null);
 
   useEffect(() => {
     const clean = creatorName.trim();
@@ -245,6 +310,8 @@ export default function Page() {
     setCurrentPercent(null);
     setLeaderboard([]);
     setPlayerRank(null);
+    setDashboardResults([]);
+    setAveragePercent(null);
     setCopied(false);
     setScreen("share");
   };
@@ -294,6 +361,8 @@ export default function Page() {
     setCurrentPercent(null);
     setLeaderboard([]);
     setPlayerRank(null);
+    setDashboardResults([]);
+    setAveragePercent(null);
     setCopied(false);
     setScreen("intro");
     setLoadingSharedQuiz(false);
@@ -332,6 +401,33 @@ export default function Page() {
     } else {
       setPlayerRank(null);
     }
+  };
+
+  const loadDashboard = async (id: string) => {
+    const { data, error } = await supabase
+      .from("quiz_results")
+      .select("player_name, score, total, percent")
+      .eq("quiz_id", id)
+      .order("percent", { ascending: false })
+      .order("score", { ascending: false });
+
+    if (error || !data) {
+      setDashboardResults([]);
+      setAveragePercent(null);
+      return;
+    }
+
+    const rows = data as ResultEntry[];
+    setDashboardResults(rows);
+
+    if (!rows.length) {
+      setAveragePercent(null);
+      return;
+    }
+
+    const avg =
+      rows.reduce((acc, row) => acc + Number(row.percent), 0) / rows.length;
+    setAveragePercent(avg);
   };
 
   const answer = async (val: boolean) => {
@@ -375,6 +471,13 @@ export default function Page() {
     setScreen("play");
   };
 
+  const openDashboard = async () => {
+    const finalQuizId = quizId || shareUrl.split("q=")[1] || "";
+    if (!finalQuizId) return;
+    await loadDashboard(finalQuizId);
+    setScreen("dashboard");
+  };
+
   if (loadingSharedQuiz) {
     return (
       <main style={pageStyle}>
@@ -398,7 +501,7 @@ export default function Page() {
 
       {screen === "create" && (
         <>
-          <h2>Quiz erstellen</h2>
+          <h2 style={{ fontSize: 34 }}>Quiz erstellen</h2>
 
           <input
             placeholder="Dein Name"
@@ -407,7 +510,7 @@ export default function Page() {
             style={inputStyle}
           />
 
-          <p style={{ marginBottom: 12, opacity: 0.8 }}>
+          <p style={{ marginBottom: 12, opacity: 0.8, fontSize: 18 }}>
             Du kannst 3 bis 5 Fragen erstellen.
           </p>
 
@@ -421,13 +524,14 @@ export default function Page() {
                   marginBottom: 8,
                 }}
               >
-                <strong>Frage {i + 1}</strong>
+                <strong style={{ fontSize: 20 }}>Frage {i + 1}</strong>
                 <button
                   onClick={() => removeQuestion(i)}
                   disabled={questions.length <= 3}
                   style={{
                     opacity: questions.length <= 3 ? 0.4 : 1,
-                    padding: "6px 10px",
+                    padding: "8px 12px",
+                    fontSize: 16,
                   }}
                 >
                   Entfernen
@@ -481,13 +585,18 @@ export default function Page() {
             <button
               onClick={addQuestion}
               disabled={questions.length >= 5}
-              style={{ opacity: questions.length >= 5 ? 0.4 : 1 }}
+              style={{
+                ...ghostButton,
+                opacity: questions.length >= 5 ? 0.4 : 1,
+                fontSize: 18,
+                padding: "12px 16px",
+              }}
             >
               + Frage hinzufügen
             </button>
           </div>
 
-          <button onClick={createQuiz} disabled={!canCreate}>
+          <button onClick={createQuiz} disabled={!canCreate} style={primaryButton}>
             Quiz mit deinen Freunden teilen
           </button>
         </>
@@ -495,20 +604,25 @@ export default function Page() {
 
       {screen === "share" && (
         <>
-          <h2>Quiz teilen</h2>
-          <p style={{ maxWidth: 700 }}>
+          <h2 style={{ fontSize: 34 }}>Quiz teilen</h2>
+          <p style={{ maxWidth: 700, fontSize: 18 }}>
             Dein Quiz ist fertig. Verschicke jetzt den Link an deine Freunde oder
             teste es selbst.
           </p>
 
           <div style={linkBoxStyle}>{shareUrl}</div>
 
-          <button onClick={shareWhatsApp} style={{ marginRight: 8 }}>
-            WhatsApp
-          </button>
-          <button onClick={copyChallengeText} style={{ marginRight: 8 }}>
-            {copied ? "Kopiert" : "Challenge-Text kopieren"}
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 }}>
+            <button onClick={shareWhatsApp} style={primaryButton}>
+              WhatsApp
+            </button>
+            <button onClick={copyChallengeText} style={ghostButton}>
+              {copied ? "Kopiert" : "Challenge-Text kopieren"}
+            </button>
+            <button onClick={openDashboard} style={ghostButton}>
+              Dashboard
+            </button>
+          </div>
 
           <div style={{ marginTop: 24 }}>
             <input
@@ -518,7 +632,7 @@ export default function Page() {
               style={inputStyle}
             />
 
-            <button onClick={startPlay} disabled={!playerName.trim()}>
+            <button onClick={startPlay} disabled={!playerName.trim()} style={primaryButton}>
               Test spielen
             </button>
           </div>
@@ -528,10 +642,10 @@ export default function Page() {
       {screen === "intro" && (
         <>
           <h1 style={{ fontSize: 36, marginBottom: 12 }}>{quizTitle}</h1>
-          <p style={{ fontSize: 20, marginBottom: 8 }}>
+          <p style={{ fontSize: 22, marginBottom: 8 }}>
             {questions.length} Fragen · dauert ca. 20 Sekunden
           </p>
-          <p style={{ marginBottom: 20, opacity: 0.85 }}>
+          <p style={{ marginBottom: 20, opacity: 0.85, fontSize: 18 }}>
             Beantworte die Aussagen mit Wahr oder Falsch und schau, wie gut du{" "}
             {creatorName || "die Person"} wirklich kennst.
           </p>
@@ -543,34 +657,57 @@ export default function Page() {
             style={inputStyle}
           />
 
-          <button
-            onClick={startPlay}
-            disabled={!playerName.trim()}
-            style={bigPrimaryButton}
-          >
-            Quiz starten
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={startPlay}
+              disabled={!playerName.trim()}
+              style={bigPrimaryButton}
+            >
+              Quiz starten
+            </button>
+            <button onClick={openDashboard} style={ghostButton}>
+              Dashboard
+            </button>
+          </div>
         </>
       )}
 
       {screen === "play" && (
         <>
-          <p style={{ opacity: 0.8, marginBottom: 10 }}>
+          <p style={{ opacity: 0.8, marginBottom: 10, fontSize: 18 }}>
             Frage {step + 1} von {questions.length}
           </p>
-          <h2>{questions[step].text}</h2>
+          <h2 style={{ fontSize: 36, marginBottom: 20 }}>{questions[step].text}</h2>
 
-          <button onClick={() => answer(true)} style={{ marginRight: 8 }}>
-            Wahr
-          </button>
-          <button onClick={() => answer(false)}>Falsch</button>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <button
+              onClick={() => answer(true)}
+              style={{
+                ...answerButtonBase,
+                background: "white",
+                color: "#0f172a",
+              }}
+            >
+              Wahr
+            </button>
+            <button
+              onClick={() => answer(false)}
+              style={{
+                ...answerButtonBase,
+                background: "transparent",
+                color: "white",
+              }}
+            >
+              Falsch
+            </button>
+          </div>
         </>
       )}
 
       {screen === "result" && (
         <>
-          <h1 style={{ fontSize: 44, marginBottom: 10 }}>{currentPercent}%</h1>
-          <p style={{ fontSize: 22, marginBottom: 12 }}>
+          <h1 style={{ fontSize: 50, marginBottom: 10 }}>{currentPercent}%</h1>
+          <p style={{ fontSize: 24, marginBottom: 12 }}>
             {getResultHeadline(currentPercent)}
           </p>
 
@@ -586,20 +723,27 @@ export default function Page() {
           <div
             style={{
               display: "flex",
-              gap: 8,
+              gap: 10,
               flexWrap: "wrap",
               marginBottom: 24,
             }}
           >
-            <button onClick={shareWhatsApp}>Freund herausfordern</button>
-            <button onClick={copyChallengeText}>
+            <button onClick={shareWhatsApp} style={primaryButton}>
+              Freund herausfordern
+            </button>
+            <button onClick={copyChallengeText} style={ghostButton}>
               {copied ? "Kopiert" : "Challenge-Text kopieren"}
             </button>
-            <button onClick={() => setScreen("create")}>Eigenes Quiz</button>
+            <button onClick={openDashboard} style={ghostButton}>
+              Dashboard
+            </button>
+            <button onClick={() => setScreen("create")} style={ghostButton}>
+              Eigenes Quiz
+            </button>
           </div>
 
-          <div style={{ marginTop: 30, maxWidth: 600 }}>
-            <h2>Leaderboard</h2>
+          <div style={{ marginTop: 30, maxWidth: 700 }}>
+            <h2 style={{ fontSize: 32 }}>Leaderboard</h2>
 
             {leaderboard.length === 0 ? (
               <p>Noch keine Ergebnisse vorhanden.</p>
@@ -608,24 +752,17 @@ export default function Page() {
                 {leaderboard.map((entry, index) => (
                   <div
                     key={`${entry.player_name}-${index}`}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      background: "#1e293b",
-                      padding: 14,
-                      borderRadius: 12,
-                    }}
+                    style={resultRowStyle}
                   >
                     <div>
-                      <strong>
+                      <strong style={{ fontSize: 20 }}>
                         #{index + 1} {entry.player_name}
                       </strong>
-                      <div style={{ opacity: 0.8, fontSize: 14 }}>
+                      <div style={{ opacity: 0.8, fontSize: 15 }}>
                         {entry.score} / {entry.total} richtig
                       </div>
                     </div>
-                    <div style={{ fontSize: 22, fontWeight: 700 }}>
+                    <div style={{ fontSize: 24, fontWeight: 700 }}>
                       {Math.round(Number(entry.percent))}%
                     </div>
                   </div>
@@ -633,6 +770,77 @@ export default function Page() {
               </div>
             )}
           </div>
+        </>
+      )}
+
+      {screen === "dashboard" && (
+        <>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+            <button onClick={() => setScreen("share")} style={primaryButton}>
+              Zurück
+            </button>
+          </div>
+
+          <h1 style={{ fontSize: 38, marginBottom: 12 }}>Dashboard</h1>
+          <p style={{ fontSize: 20, marginBottom: 24 }}>{quizTitle}</p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: 12,
+              marginBottom: 24,
+              maxWidth: 900,
+            }}
+          >
+            <div style={statCardStyle}>
+              <div style={statLabelStyle}>Teilnehmer</div>
+              <div style={statValueStyle}>{dashboardResults.length}</div>
+            </div>
+            <div style={statCardStyle}>
+              <div style={statLabelStyle}>Durchschnitt</div>
+              <div style={statValueStyle}>
+                {averagePercent !== null ? `${Math.round(averagePercent)}%` : "-"}
+              </div>
+            </div>
+            <div style={statCardStyle}>
+              <div style={statLabelStyle}>Top-Score</div>
+              <div style={statValueStyle}>
+                {dashboardResults.length
+                  ? `${Math.round(
+                      Math.max(...dashboardResults.map((r) => Number(r.percent)))
+                    )}%`
+                  : "-"}
+              </div>
+            </div>
+          </div>
+
+          <h2 style={{ fontSize: 30, marginBottom: 14 }}>Ergebnisse</h2>
+
+          {dashboardResults.length === 0 ? (
+            <p>Noch keine Ergebnisse vorhanden.</p>
+          ) : (
+            <div style={{ display: "grid", gap: 10, maxWidth: 800 }}>
+              {dashboardResults.map((entry, index) => (
+                <div
+                  key={`${entry.player_name}-${index}-dashboard`}
+                  style={resultRowStyle}
+                >
+                  <div>
+                    <strong style={{ fontSize: 20 }}>
+                      #{index + 1} {entry.player_name}
+                    </strong>
+                    <div style={{ opacity: 0.8, fontSize: 15 }}>
+                      {entry.score} / {entry.total} richtig
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>
+                    {Math.round(Number(entry.percent))}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </main>
