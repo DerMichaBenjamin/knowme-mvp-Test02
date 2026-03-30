@@ -826,16 +826,3 @@ const resultRowStyle = {
   padding: 14,
   borderRadius: 12,
 } as const;
-```
-
-## Was das neue Dashboard zeigt
-- Anzahl Teilnehmer
-- Durchschnitt in Prozent
-- Top-Score in Prozent
-- Liste aller Teilnehmer mit Score und Prozent
-
-## Danach
-1. Datei speichern
-2. committen
-3. Vercel redeployen
-4. im Share- oder Ergebnis-Screen auf **Dashboard** klicken
