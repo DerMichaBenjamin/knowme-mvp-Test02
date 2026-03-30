@@ -125,6 +125,36 @@ const warningStyle: CSSProperties = {
   maxWidth: 720,
 };
 
+const shareHeroStyle: CSSProperties = {
+  background: "#1e293b",
+  padding: 20,
+  borderRadius: 18,
+  marginBottom: 20,
+  maxWidth: 760,
+};
+
+const shareLinkBoxStyle: CSSProperties = {
+  background: "#0f172a",
+  border: "1px solid #334155",
+  padding: 14,
+  borderRadius: 12,
+  marginTop: 14,
+  marginBottom: 16,
+  wordBreak: "break-all",
+  fontSize: 16,
+  opacity: 0.95,
+};
+
+const badgeStyle: CSSProperties = {
+  display: "inline-block",
+  padding: "8px 12px",
+  borderRadius: 999,
+  background: "#334155",
+  fontSize: 14,
+  fontWeight: 700,
+  marginBottom: 14,
+};
+
 const swipeCardStyle: CSSProperties = {
   width: "100%",
   maxWidth: 720,
@@ -165,6 +195,8 @@ const progressTrackStyle: CSSProperties = {
   marginBottom: 20,
 };
 
+/* ---------- HELPERS ---------- */
+
 const getResultHeadline = (percent: number | null) => {
   if (percent === null) return "";
   if (percent >= 85) return "Stark. Das war fast schon unfair gut.";
@@ -201,6 +233,8 @@ ${betterThanPercent !== null ? `Vielleicht bist du besser als ${betterThanPercen
 Mach es besser:
 ${shareUrl}`;
 };
+
+/* ---------- COMPONENT ---------- */
 
 export default function Page() {
   const [screen, setScreen] = useState<Screen>("welcome");
@@ -648,31 +682,53 @@ export default function Page() {
 
         {screen === "share" && (
           <>
-            <h2>Quiz teilen</h2>
-            <p>{shareUrl}</p>
+            <div style={shareHeroStyle}>
+              <div style={badgeStyle}>Bereit zum Verschicken</div>
+              <h2 style={{ marginTop: 0, marginBottom: 10 }}>
+                Schick dein Quiz jetzt an Freunde
+              </h2>
+              <p style={{ fontSize: 18, marginTop: 0, marginBottom: 10 }}>
+                Deine Freunde bekommen eine kurze Challenge und können sofort testen,
+                wie gut sie dich wirklich kennen.
+              </p>
+              <p style={{ fontSize: 16, opacity: 0.85, marginTop: 0 }}>
+                Dauert nur ca. 20 Sekunden. Je einfacher du es jetzt verschickst,
+                desto eher spielen sie es direkt.
+              </p>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-              <button onClick={copyChallengeText} style={primaryBtn}>
-                {copied ? "Gesendet vorbereitet" : "Quiz an Freunde senden"}
-              </button>
-              <button onClick={shareWhatsApp} style={ghostBtn}>
-                WhatsApp
-              </button>
-              <button onClick={openDashboard} style={ghostBtn}>
-                Dashboard
-              </button>
+              <div style={shareLinkBoxStyle}>{shareUrl}</div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={copyChallengeText} style={primaryBtn}>
+                  {copied ? "Gesendet vorbereitet" : "Quiz an Freunde senden"}
+                </button>
+                <button onClick={shareWhatsApp} style={ghostBtn}>
+                  WhatsApp
+                </button>
+                <button onClick={openDashboard} style={ghostBtn}>
+                  Dashboard
+                </button>
+              </div>
             </div>
 
-            <input
-              placeholder="Dein Name"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              style={inputStyle}
-            />
+            <div style={cardStyle}>
+              <h3 style={{ marginTop: 0 }}>Selbst testen</h3>
+              <p style={{ opacity: 0.85 }}>
+                Du kannst das Quiz auch direkt selbst starten und schauen, wie sich
+                der Flow für andere anfühlt.
+              </p>
 
-            <button onClick={startPlay} disabled={!playerName.trim()} style={primaryBtn}>
-              Start
-            </button>
+              <input
+                placeholder="Dein Name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                style={inputStyle}
+              />
+
+              <button onClick={startPlay} disabled={!playerName.trim()} style={primaryBtn}>
+                Start
+              </button>
+            </div>
           </>
         )}
 
