@@ -435,7 +435,6 @@ export default function Page() {
   const [average, setAverage] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showPopularTemplates, setShowPopularTemplates] = useState(false);
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
 
   /* ---------- SWIPE ---------- */
@@ -553,23 +552,22 @@ export default function Page() {
     );
   };
 
-  const setRandomQuestionForIndex = (index: number) => {
-    const current = questions[index]?.text;
-    const next = getRandomTemplate(current);
-    setQuestionText(index, next);
+const setRandomQuestionForIndex = (index: number) => {
+  const current = questions[index]?.text?.trim();
+  const next = getRandomTemplate(current || undefined);
+  setQuestionText(index, next);
   };
 
   const generateAutoQuiz = () => {
-    const count = Math.min(Math.max(questions.length, 3), 5);
-    const picked = shuffleArray(QUESTION_TEMPLATES).slice(0, count);
-    setQuestions(
-      picked.map((text) => ({
-        text,
-        answer: null,
-      }))
-    );
-    setShowPopularTemplates(false);
-  };
+  const count = Math.min(Math.max(questions.length, 3), 5);
+  const picked = shuffleArray(QUESTION_TEMPLATES).slice(0, count);
+  setQuestions(
+    picked.map((text) => ({
+      text,
+      answer: null,
+    }))
+  );
+};
 
   const applyPopularTemplate = (template: string) => {
     const firstEmptyIndex = questions.findIndex((q) => !q.text.trim());
@@ -836,33 +834,10 @@ export default function Page() {
               />
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-                <button onClick={generateAutoQuiz} style={primaryBtn}>
-                  1-Klick Auto-Quiz
-                </button>
-                <button
-                  onClick={() => setShowPopularTemplates((prev) => !prev)}
-                  style={ghostBtn}
-                >
-                  {showPopularTemplates ? "Top-Fragen ausblenden" : "Top-Fragen anzeigen"}
-                </button>
-              </div>
-
-              {showPopularTemplates && (
-                <div style={templateBoxStyle}>
-                  <strong style={{ display: "block", marginBottom: 10, color: "#0f172a" }}>
-                    Beliebte Fragen
-                  </strong>
-                  {POPULAR_QUESTION_TEMPLATES.map((template, index) => (
-                    <div
-                      key={`${template}-${index}`}
-                      onClick={() => applyPopularTemplate(template)}
-                      style={templateItemStyle}
-                    >
-                      {template}
-                    </div>
-                  ))}
-                </div>
-              )}
+  <button onClick={generateAutoQuiz} style={primaryBtn}>
+    1-Klick Auto-Quiz
+  </button>
+</div>
 
               {showValidation && validationIssues.length > 0 && (
                 <div style={warningStyle}>
@@ -889,12 +864,12 @@ export default function Page() {
                   <div style={questionHeaderStyle}>
                     <strong style={{ fontSize: 18, color: "#0f172a" }}>Frage {i + 1}</strong>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        onClick={() => setRandomQuestionForIndex(i)}
-                        style={smallGhostBtn}
-                      >
-                        Zufallsfrage
-                      </button>
+                     <button
+  onClick={() => setRandomQuestionForIndex(i)}
+  style={smallGhostBtn}
+>
+  Inspiration anzeigen
+</button>
                       <button
                         onClick={() => removeQuestion(i)}
                         disabled={questions.length <= 1}
