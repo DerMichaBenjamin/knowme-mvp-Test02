@@ -113,10 +113,10 @@ const POPULAR_QUESTION_TEMPLATES = [
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  padding: 24,
-  color: "#f8fafc",
+  padding: 20,
+  color: "#1f2937",
   background:
-    "radial-gradient(circle at top left, #312e81 0%, #111827 35%, #020617 100%)",
+    "linear-gradient(135deg, #fff7ed 0%, #fdf2f8 20%, #eef2ff 45%, #cffafe 70%, #dcfce7 100%)",
   fontFamily:
     'Inter, Arial, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
@@ -127,32 +127,33 @@ const shellStyle: CSSProperties = {
 };
 
 const heroTitleStyle: CSSProperties = {
-  fontSize: 44,
-  lineHeight: 1.05,
+  fontSize: 46,
+  lineHeight: 1.02,
   marginBottom: 12,
-  letterSpacing: "-0.03em",
+  letterSpacing: "-0.035em",
+  color: "#0f172a",
 };
 
 const heroTextStyle: CSSProperties = {
   fontSize: 18,
-  color: "#cbd5e1",
+  color: "#475569",
   maxWidth: 760,
-  lineHeight: 1.5,
+  lineHeight: 1.55,
 };
 
 const cardStyle: CSSProperties = {
-  background: "rgba(15, 23, 42, 0.72)",
-  border: "1px solid rgba(148, 163, 184, 0.18)",
-  boxShadow: "0 18px 60px rgba(0,0,0,0.28)",
-  backdropFilter: "blur(10px)",
-  borderRadius: 22,
+  background: "rgba(255,255,255,0.78)",
+  border: "1px solid rgba(255,255,255,0.65)",
+  boxShadow: "0 18px 50px rgba(99, 102, 241, 0.14)",
+  backdropFilter: "blur(12px)",
+  borderRadius: 24,
   padding: 20,
   marginBottom: 18,
 };
 
 const subCardStyle: CSSProperties = {
-  background: "rgba(30, 41, 59, 0.75)",
-  border: "1px solid rgba(148, 163, 184, 0.18)",
+  background: "linear-gradient(135deg, rgba(236, 253, 245, 0.9), rgba(224, 231, 255, 0.85))",
+  border: "1px solid rgba(129, 140, 248, 0.18)",
   borderRadius: 18,
   padding: 16,
   marginBottom: 16,
@@ -162,33 +163,32 @@ const badgeStyle: CSSProperties = {
   display: "inline-block",
   padding: "8px 12px",
   borderRadius: 999,
-  background: "rgba(99, 102, 241, 0.18)",
-  color: "#c7d2fe",
-  border: "1px solid rgba(129, 140, 248, 0.25)",
+  background: "linear-gradient(135deg, #fde68a, #f9a8d4)",
+  color: "#7c2d12",
   fontSize: 13,
-  fontWeight: 700,
+  fontWeight: 800,
   marginBottom: 14,
 };
 
 const primaryBtn: CSSProperties = {
   fontSize: 20,
   padding: "15px 20px",
-  borderRadius: 14,
+  borderRadius: 16,
   border: 0,
-  background: "linear-gradient(135deg, #ffffff 0%, #c7d2fe 100%)",
-  color: "#0f172a",
+  background: "linear-gradient(135deg, #f97316 0%, #ec4899 55%, #8b5cf6 100%)",
+  color: "white",
   fontWeight: 800,
   cursor: "pointer",
-  boxShadow: "0 10px 30px rgba(99,102,241,0.25)",
+  boxShadow: "0 14px 34px rgba(236,72,153,0.24)",
 };
 
 const ghostBtn: CSSProperties = {
   fontSize: 18,
   padding: "14px 18px",
-  borderRadius: 14,
-  border: "1px solid rgba(148, 163, 184, 0.28)",
-  background: "rgba(15, 23, 42, 0.45)",
-  color: "#f8fafc",
+  borderRadius: 16,
+  border: "1px solid rgba(148, 163, 184, 0.24)",
+  background: "rgba(255,255,255,0.7)",
+  color: "#334155",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -208,16 +208,17 @@ const smallGhostBtn: CSSProperties = {
 const inputStyle: CSSProperties = {
   display: "block",
   width: "100%",
-  maxWidth: 680,
+  maxWidth: 720,
   padding: "15px 16px",
   marginBottom: 12,
-  borderRadius: 14,
+  borderRadius: 16,
   border: "1px solid rgba(148, 163, 184, 0.18)",
   background: "rgba(255,255,255,0.96)",
   color: "#0f172a",
   fontSize: 17,
   boxSizing: "border-box",
   outline: "none",
+  boxShadow: "0 4px 16px rgba(15,23,42,0.04)",
 };
 
 const inputInvalidStyle: CSSProperties = {
@@ -227,40 +228,40 @@ const inputInvalidStyle: CSSProperties = {
 };
 
 const warningStyle: CSSProperties = {
-  background: "rgba(127, 29, 29, 0.25)",
-  color: "#fecaca",
-  border: "1px solid rgba(239, 68, 68, 0.4)",
+  background: "rgba(254, 226, 226, 0.88)",
+  color: "#991b1b",
+  border: "1px solid rgba(239, 68, 68, 0.28)",
   padding: 14,
-  borderRadius: 14,
+  borderRadius: 16,
   marginBottom: 16,
   maxWidth: 760,
 };
 
 const helperTextStyle: CSSProperties = {
-  color: "#cbd5e1",
+  color: "#475569",
   fontSize: 15,
-  lineHeight: 1.5,
+  lineHeight: 1.55,
 };
 
 const shareLinkBoxStyle: CSSProperties = {
-  background: "rgba(2, 6, 23, 0.72)",
-  border: "1px solid rgba(148, 163, 184, 0.2)",
+  background: "rgba(248, 250, 252, 0.95)",
+  border: "1px solid rgba(148, 163, 184, 0.18)",
   padding: 14,
   borderRadius: 14,
   marginTop: 14,
   marginBottom: 16,
   wordBreak: "break-all",
   fontSize: 15,
-  color: "#cbd5e1",
+  color: "#334155",
 };
 
 const swipeCardStyle: CSSProperties = {
   width: "100%",
   maxWidth: 760,
   minHeight: 280,
-  borderRadius: 26,
-  background: "linear-gradient(180deg, rgba(30,41,59,0.95), rgba(15,23,42,0.95))",
-  border: "1px solid rgba(148, 163, 184, 0.18)",
+  borderRadius: 28,
+  background: "linear-gradient(135deg, #ffffff 0%, #fdf2f8 45%, #e0f2fe 100%)",
+  border: "1px solid rgba(255,255,255,0.72)",
   padding: 28,
   display: "flex",
   alignItems: "center",
@@ -272,7 +273,7 @@ const swipeCardStyle: CSSProperties = {
   marginBottom: 22,
   position: "relative",
   boxSizing: "border-box",
-  boxShadow: "0 20px 60px rgba(0,0,0,0.32)",
+  boxShadow: "0 22px 60px rgba(99, 102, 241, 0.16)",
 };
 
 const resultRowStyle: CSSProperties = {
@@ -280,29 +281,29 @@ const resultRowStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: 12,
-  background: "rgba(30, 41, 59, 0.85)",
-  border: "1px solid rgba(148, 163, 184, 0.16)",
+  background: "rgba(255,255,255,0.78)",
+  border: "1px solid rgba(255,255,255,0.65)",
   padding: 14,
-  borderRadius: 14,
+  borderRadius: 16,
 };
 
 const progressTrackStyle: CSSProperties = {
   width: "100%",
   maxWidth: 760,
   height: 12,
-  background: "rgba(51, 65, 85, 0.95)",
+  background: "rgba(226, 232, 240, 0.95)",
   borderRadius: 999,
   overflow: "hidden",
   marginBottom: 20,
 };
 
 const templateBoxStyle: CSSProperties = {
-  background: "rgba(2, 6, 23, 0.72)",
-  border: "1px solid rgba(148, 163, 184, 0.18)",
-  borderRadius: 14,
+  background: "rgba(255,255,255,0.82)",
+  border: "1px solid rgba(255,255,255,0.7)",
+  borderRadius: 16,
   padding: 10,
   marginBottom: 12,
-  maxWidth: 680,
+  maxWidth: 720,
 };
 
 const templateItemStyle: CSSProperties = {
@@ -311,30 +312,47 @@ const templateItemStyle: CSSProperties = {
   cursor: "pointer",
   fontSize: 15,
   marginBottom: 6,
-  background: "rgba(30, 41, 59, 0.92)",
-  color: "#e2e8f0",
+  background: "linear-gradient(135deg, #eff6ff, #f5f3ff)",
+  color: "#334155",
 };
 
 const truthySelectedStyle: CSSProperties = {
   ...ghostBtn,
-  background: "rgba(34, 197, 94, 0.18)",
-  border: "1px solid rgba(34, 197, 94, 0.5)",
-  color: "#bbf7d0",
+  background: "linear-gradient(135deg, #22c55e, #16a34a)",
+  border: "1px solid rgba(22, 163, 74, 0.5)",
+  color: "white",
+  boxShadow: "0 12px 26px rgba(34,197,94,0.2)",
 };
 
 const falsySelectedStyle: CSSProperties = {
   ...ghostBtn,
-  background: "rgba(239, 68, 68, 0.16)",
-  border: "1px solid rgba(239, 68, 68, 0.48)",
-  color: "#fecaca",
+  background: "linear-gradient(135deg, #ef4444, #dc2626)",
+  border: "1px solid rgba(220, 38, 38, 0.5)",
+  color: "white",
+  boxShadow: "0 12px 26px rgba(239,68,68,0.18)",
 };
 
 const guideListStyle: CSSProperties = {
   marginTop: 10,
   marginBottom: 0,
   paddingLeft: 20,
-  color: "#cbd5e1",
+  color: "#475569",
   lineHeight: 1.7,
+};
+
+const questionHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
+  marginBottom: 10,
+};
+
+const subtleCountStyle: CSSProperties = {
+  color: "#475569",
+  fontSize: 14,
+  fontWeight: 700,
 };
 
 /* ---------- HELPERS ---------- */
@@ -385,6 +403,12 @@ const shuffleArray = <T,>(arr: T[]) => {
   return copy;
 };
 
+const getRandomTemplate = (exclude?: string) => {
+  const pool = QUESTION_TEMPLATES.filter((item) => item !== exclude);
+  if (!pool.length) return QUESTION_TEMPLATES[0];
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
 /* ---------- COMPONENT ---------- */
 
 export default function Page() {
@@ -411,7 +435,6 @@ export default function Page() {
   const [average, setAverage] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
-  const [openTemplateIndex, setOpenTemplateIndex] = useState<number | null>(null);
   const [showPopularTemplates, setShowPopularTemplates] = useState(false);
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
 
@@ -530,6 +553,12 @@ export default function Page() {
     );
   };
 
+  const setRandomQuestionForIndex = (index: number) => {
+    const current = questions[index]?.text;
+    const next = getRandomTemplate(current);
+    setQuestionText(index, next);
+  };
+
   const generateAutoQuiz = () => {
     const count = Math.min(Math.max(questions.length, 3), 5);
     const picked = shuffleArray(QUESTION_TEMPLATES).slice(0, count);
@@ -539,7 +568,6 @@ export default function Page() {
         answer: null,
       }))
     );
-    setOpenTemplateIndex(null);
     setShowPopularTemplates(false);
   };
 
@@ -575,7 +603,7 @@ export default function Page() {
 
     if (error || !data) {
       console.error("createQuiz error:", error);
-      alert("Quiz konnte nicht gespeichert werden.");
+      alert(`Quiz konnte nicht gespeichert werden: ${error?.message || "Unbekannter Fehler"}`);
       return;
     }
 
@@ -592,7 +620,7 @@ export default function Page() {
 
     if (questionError) {
       console.error("createQuiz question error:", questionError);
-      alert("Fragen konnten nicht gespeichert werden.");
+      alert(`Fragen konnten nicht gespeichert werden: ${questionError.message}`);
       return;
     }
 
@@ -763,7 +791,7 @@ export default function Page() {
       <div style={shellStyle}>
         {screen === "welcome" && (
           <div style={cardStyle}>
-            <div style={badgeStyle}>Quiz-App Demo</div>
+            <div style={badgeStyle}>Crazy Quiz</div>
             <h1 style={heroTitleStyle}>Wie gut kennen dich deine Freunde wirklich?</h1>
             <p style={heroTextStyle}>
               Erstelle ein überraschendes Wahr/Falsch-Quiz über dich, teile den Link
@@ -781,14 +809,16 @@ export default function Page() {
           <>
             <div style={cardStyle}>
               <div style={badgeStyle}>Quiz erstellen</div>
-              <h2 style={{ marginTop: 0, fontSize: 34 }}>Mach es überraschend</h2>
+              <h2 style={{ marginTop: 0, fontSize: 34, color: "#0f172a" }}>
+                Mach es überraschend
+              </h2>
               <p style={helperTextStyle}>
-                Nutze Aussagen über Eigenheiten, peinliche Erlebnisse, ungewöhnliche
-                Gewohnheiten oder Dinge, die andere vermutlich falsch einschätzen.
+                Nutze Aussagen über schräge Gewohnheiten, peinliche Erlebnisse,
+                ungewöhnliche Jobs, komische Orte oder Dinge, die andere niemals von dir erwarten würden.
               </p>
 
               <div style={subCardStyle}>
-                <strong style={{ display: "block", marginBottom: 8 }}>
+                <strong style={{ display: "block", marginBottom: 8, color: "#0f172a" }}>
                   Kurzanleitung
                 </strong>
                 <ol style={guideListStyle}>
@@ -819,8 +849,8 @@ export default function Page() {
 
               {showPopularTemplates && (
                 <div style={templateBoxStyle}>
-                  <strong style={{ display: "block", marginBottom: 10 }}>
-                    Beliebte überraschende Fragen
+                  <strong style={{ display: "block", marginBottom: 10, color: "#0f172a" }}>
+                    Beliebte Fragen
                   </strong>
                   {POPULAR_QUESTION_TEMPLATES.map((template, index) => (
                     <div
@@ -845,8 +875,8 @@ export default function Page() {
                 </div>
               )}
 
-              <p style={{ ...helperTextStyle, marginBottom: 8 }}>
-                Aktuell: <strong>{questions.length}</strong> / 10 Fragen
+              <p style={{ ...subtleCountStyle, marginBottom: 0 }}>
+                Aktuell: {questions.length} / 10 Fragen
               </p>
             </div>
 
@@ -856,63 +886,34 @@ export default function Page() {
 
               return (
                 <div key={i} style={cardStyle}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 10,
-                      flexWrap: "wrap",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <strong style={{ fontSize: 18 }}>Frage {i + 1}</strong>
-                    <button
-                      onClick={() => removeQuestion(i)}
-                      disabled={questions.length <= 1}
-                      style={{
-                        ...smallGhostBtn,
-                        opacity: questions.length <= 1 ? 0.4 : 1,
-                      }}
-                    >
-                      Entfernen
-                    </button>
+                  <div style={questionHeaderStyle}>
+                    <strong style={{ fontSize: 18, color: "#0f172a" }}>Frage {i + 1}</strong>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => setRandomQuestionForIndex(i)}
+                        style={smallGhostBtn}
+                      >
+                        Zufallsfrage
+                      </button>
+                      <button
+                        onClick={() => removeQuestion(i)}
+                        disabled={questions.length <= 1}
+                        style={{
+                          ...smallGhostBtn,
+                          opacity: questions.length <= 1 ? 0.4 : 1,
+                        }}
+                      >
+                        Entfernen
+                      </button>
+                    </div>
                   </div>
 
                   <input
-                    placeholder={`Frage ${i + 1}`}
+                    placeholder="Schreibe hier eine überraschende Aussage über dich"
                     value={q.text}
                     onChange={(e) => setQuestionText(i, e.target.value)}
                     style={showValidation && missingText ? inputInvalidStyle : inputStyle}
                   />
-
-                  <button
-                    onClick={() =>
-                      setOpenTemplateIndex(openTemplateIndex === i ? null : i)
-                    }
-                    style={smallGhostBtn}
-                  >
-                    {openTemplateIndex === i
-                      ? "Inspiration ausblenden"
-                      : "Inspiration anzeigen"}
-                  </button>
-
-                  {openTemplateIndex === i && (
-                    <div style={templateBoxStyle}>
-                      {QUESTION_TEMPLATES.map((template, tIndex) => (
-                        <div
-                          key={`${template}-${tIndex}`}
-                          onClick={() => {
-                            setQuestionText(i, template);
-                            setOpenTemplateIndex(null);
-                          }}
-                          style={templateItemStyle}
-                        >
-                          {template}
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
@@ -968,12 +969,12 @@ export default function Page() {
           <>
             <div style={cardStyle}>
               <div style={badgeStyle}>Bereit zum Verschicken</div>
-              <h2 style={{ marginTop: 0, marginBottom: 10 }}>
+              <h2 style={{ marginTop: 0, marginBottom: 10, color: "#0f172a" }}>
                 Schick dein Quiz jetzt an Freunde
               </h2>
               <p style={helperTextStyle}>
-                Deine Freunde bekommen einen Link und können sofort testen, wie gut
-                sie dich wirklich kennen. Das dauert nur ca. 20 Sekunden.
+                Deine Freunde bekommen einen Link und können sofort testen,
+                wie gut sie dich wirklich kennen. Das dauert nur ca. 20 Sekunden.
               </p>
 
               <div style={shareLinkBoxStyle}>{shareUrl}</div>
@@ -992,7 +993,7 @@ export default function Page() {
             </div>
 
             <div style={cardStyle}>
-              <h3 style={{ marginTop: 0 }}>Selbst testen</h3>
+              <h3 style={{ marginTop: 0, color: "#0f172a" }}>Selbst testen</h3>
               <p style={helperTextStyle}>
                 Starte das Quiz selbst und prüfe direkt, wie sich der Flow für andere anfühlt.
               </p>
@@ -1014,7 +1015,7 @@ export default function Page() {
         {screen === "intro" && (
           <div style={cardStyle}>
             <div style={badgeStyle}>Quiz bereit</div>
-            <h1 style={{ marginTop: 0 }}>{quizTitle}</h1>
+            <h1 style={{ marginTop: 0, color: "#0f172a" }}>{quizTitle}</h1>
             <p style={helperTextStyle}>
               {questions.length} Fragen · dauert ca. 20 Sekunden
             </p>
@@ -1039,7 +1040,7 @@ export default function Page() {
 
         {screen === "play" && (
           <div style={cardStyle}>
-            <p style={{ opacity: 0.8 }}>
+            <p style={{ color: "#475569" }}>
               Frage {step + 1} von {questions.length}
             </p>
 
@@ -1048,7 +1049,7 @@ export default function Page() {
                 style={{
                   width: `${progressPercent}%`,
                   height: "100%",
-                  background: "linear-gradient(90deg, #22c55e 0%, #818cf8 100%)",
+                  background: "linear-gradient(90deg, #22c55e 0%, #f97316 50%, #ec4899 100%)",
                 }}
               />
             </div>
@@ -1059,14 +1060,16 @@ export default function Page() {
                 justifyContent: "space-between",
                 maxWidth: 760,
                 marginBottom: 10,
-                opacity: 0.75,
+                color: "#64748b",
               }}
             >
               <span>← Falsch</span>
               <span>Wahr →</span>
             </div>
 
-            <h2 style={{ fontSize: 34, lineHeight: 1.25 }}>{questions[step]?.text}</h2>
+            <h2 style={{ fontSize: 34, lineHeight: 1.2, color: "#0f172a" }}>
+              {questions[step]?.text}
+            </h2>
 
             <div
               style={{
@@ -1095,14 +1098,14 @@ export default function Page() {
                   position: "absolute",
                   right: 18,
                   top: 18,
-                  color: "#22c55e",
+                  color: "#16a34a",
                   opacity: dragX > 18 ? 1 : 0.3,
                   fontWeight: 700,
                 }}
               >
                 WAHR
               </div>
-              Swipe →
+              <span style={{ color: "#475569", fontWeight: 700 }}>Swipe →</span>
             </div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1118,8 +1121,8 @@ export default function Page() {
 
         {screen === "result" && (
           <div style={cardStyle}>
-            <h1 style={{ fontSize: 54, marginBottom: 10 }}>{currentPercent}%</h1>
-            <p style={{ fontSize: 20 }}>{getResultHeadline(currentPercent)}</p>
+            <h1 style={{ fontSize: 54, marginBottom: 10, color: "#0f172a" }}>{currentPercent}%</h1>
+            <p style={{ color: "#475569", fontSize: 20 }}>{getResultHeadline(currentPercent)}</p>
 
             {rank && <p>Du bist Platz {rank}.</p>}
             {betterThanPercent !== null && (
@@ -1129,7 +1132,7 @@ export default function Page() {
               <p>Durchschnitt bisher: {Math.round(average)}%</p>
             )}
 
-            <p style={{ fontSize: 20, fontWeight: 700, marginTop: 16 }}>
+            <p style={{ fontSize: 20, fontWeight: 800, marginTop: 16, color: "#0f172a" }}>
               {resultCTA}
             </p>
 
@@ -1148,7 +1151,7 @@ export default function Page() {
               </button>
             </div>
 
-            <h2>Leaderboard</h2>
+            <h2 style={{ color: "#0f172a" }}>Leaderboard</h2>
 
             {leaderboard.length === 0 ? (
               <p>Noch keine Ergebnisse vorhanden.</p>
@@ -1160,11 +1163,11 @@ export default function Page() {
                       <strong>
                         #{index + 1} {entry.player_name}
                       </strong>
-                      <div style={{ opacity: 0.8, fontSize: 14 }}>
+                      <div style={{ color: "#64748b", fontSize: 14 }}>
                         {entry.score} / {entry.total} richtig
                       </div>
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: 22 }}>
+                    <div style={{ fontWeight: 800, fontSize: 22, color: "#0f172a" }}>
                       {Math.round(Number(entry.percent))}%
                     </div>
                   </div>
@@ -1182,7 +1185,7 @@ export default function Page() {
               </button>
             </div>
 
-            <h1 style={{ marginTop: 0 }}>Dashboard</h1>
+            <h1 style={{ marginTop: 0, color: "#0f172a" }}>Dashboard</h1>
             <p>Teilnehmer: {dashboard.length}</p>
             <p>Durchschnitt: {average !== null ? `${Math.round(average)}%` : "-"}</p>
 
