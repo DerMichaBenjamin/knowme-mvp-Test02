@@ -51,6 +51,42 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+/* ---------- TEMPLATE-DATEN ---------- */
+
+const QUESTION_TEMPLATES = [
+  "Ich trinke lieber Bier als Wein",
+  "Ich bin öfter zu spät als pünktlich",
+  "Ich gehe lieber feiern als zu Hause zu bleiben",
+  "Ich habe schon mal etwas Peinliches im Suff gemacht",
+  "Ich esse lieber Pizza als Salat",
+  "Ich höre öfter Party-Musik als ruhige Musik",
+  "Ich bin eher spontan als geplant",
+  "Ich gebe mehr Geld für Feiern als für Kleidung aus",
+  "Ich bin morgens schlechter drauf als nachts",
+  "Ich habe schon mal aus Impuls etwas Dummes gekauft",
+  "Ich bin im Urlaub entspannter als zu Hause",
+  "Ich kann schlecht stillsitzen und nichts tun",
+  "Ich höre Songs oft tot, wenn ich sie feiere",
+  "Ich bleibe auf Partys meist länger als geplant",
+  "Ich bin in Gruppen lauter als allein",
+  "Ich habe schon mal eine Nachricht bereut, die ich nachts geschickt habe",
+  "Ich mag süßes Frühstück mehr als herzhaftes",
+  "Ich würde eher spontan verreisen als lange planen",
+  "Ich bin bei Spielen ehrgeiziger als ich zugebe",
+  "Ich mache öfter Screenshots, als ich später jemals wieder anschaue",
+];
+
+const POPULAR_QUESTION_TEMPLATES = [
+  "Ich bin eher chaotisch als organisiert",
+  "Ich war schon mal peinlich betrunken",
+  "Ich würde lieber ans Meer als in die Berge fahren",
+  "Ich gebe zu viel Geld für Essen oder Trinken aus",
+  "Ich höre heimlich Songs, die nicht zu meinem Image passen",
+  "Ich antworte manchmal absichtlich nicht sofort",
+  "Ich bin in Wahrheit empfindlicher, als andere denken",
+  "Ich bleibe gern länger wach, auch wenn ich müde bin",
+];
+
 /* ---------- STYLES ---------- */
 
 const pageStyle: CSSProperties = {
@@ -87,6 +123,12 @@ const bigBtn: CSSProperties = {
   ...primaryBtn,
   fontSize: 30,
   padding: "20px 28px",
+};
+
+const smallGhostBtn: CSSProperties = {
+  ...ghostBtn,
+  fontSize: 16,
+  padding: "10px 14px",
 };
 
 const inputStyle: CSSProperties = {
@@ -195,6 +237,24 @@ const progressTrackStyle: CSSProperties = {
   marginBottom: 20,
 };
 
+const templateBoxStyle: CSSProperties = {
+  background: "#0f172a",
+  border: "1px solid #334155",
+  borderRadius: 12,
+  padding: 10,
+  marginBottom: 12,
+  maxWidth: 600,
+};
+
+const templateItemStyle: CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontSize: 15,
+  marginBottom: 6,
+  background: "#1e293b",
+};
+
 /* ---------- HELPERS ---------- */
 
 const getResultHeadline = (percent: number | null) => {
@@ -234,6 +294,15 @@ Mach es besser:
 ${shareUrl}`;
 };
 
+const shuffleArray = <T,>(arr: T[]) => {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
 /* ---------- COMPONENT ---------- */
 
 export default function Page() {
@@ -260,6 +329,8 @@ export default function Page() {
   const [average, setAverage] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [openTemplateIndex, setOpenTemplateIndex] = useState<number | null>(null);
+  const [showPopularTemplates, setShowPopularTemplates] = useState(false);
 
   /* ---------- SWIPE ---------- */
 
@@ -368,6 +439,34 @@ export default function Page() {
     setQuestions((prev) =>
       prev.map((q, i) => (i === index ? { ...q, answer } : q))
     );
+  };
+
+  const generateAutoQuiz = () => {
+    const picked = shuffleArray(QUESTION_TEMPLATES).slice(0, 5);
+    setQuestions(
+      picked.map((text) => ({
+        text,
+        answer: null,
+      }))
+    );
+    setOpenTemplateIndex(null);
+    setShowPopularTemplates(false);
+  };
+
+  const applyPopularTemplate = (template: string) => {
+    const firstEmptyIndex = questions.findIndex((q) => !q.text.trim());
+
+    if (firstEmptyIndex >= 0) {
+      setQuestionText(firstEmptyIndex, template);
+      return;
+    }
+
+    if (questions.length < 5) {
+      setQuestions((prev) => [...prev, { text: template, answer: null }]);
+      return;
+    }
+
+    setQuestionText(0, template);
   };
 
   const createQuiz = async () => {
@@ -540,14 +639,14 @@ export default function Page() {
     setScreen("dashboard");
   };
 
-  const copyChallengeText = async () => {
+  const copyQuizLink = async () => {
     try {
-      await navigator.clipboard.writeText(challengeText);
+      await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch (e) {
       console.error(e);
-      alert("Text konnte nicht kopiert werden.");
+      alert("Link konnte nicht kopiert werden.");
     }
   };
 
@@ -591,6 +690,35 @@ export default function Page() {
               style={!creatorName.trim() ? inputInvalidStyle : inputStyle}
             />
 
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+              <button onClick={generateAutoQuiz} style={primaryBtn}>
+                1-Klick Auto-Quiz
+              </button>
+              <button
+                onClick={() => setShowPopularTemplates((prev) => !prev)}
+                style={ghostBtn}
+              >
+                {showPopularTemplates ? "Top-Fragen ausblenden" : "Top-Fragen anzeigen"}
+              </button>
+            </div>
+
+            {showPopularTemplates && (
+              <div style={templateBoxStyle}>
+                <strong style={{ display: "block", marginBottom: 10 }}>
+                  Beliebte Fragen
+                </strong>
+                {POPULAR_QUESTION_TEMPLATES.map((template, index) => (
+                  <div
+                    key={`${template}-${index}`}
+                    onClick={() => applyPopularTemplate(template)}
+                    style={templateItemStyle}
+                  >
+                    {template}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {validationIssues.length > 0 && (
               <div style={warningStyle}>
                 <strong>Bitte noch ergänzen:</strong>
@@ -614,6 +742,34 @@ export default function Page() {
                     onChange={(e) => setQuestionText(i, e.target.value)}
                     style={missingText ? inputInvalidStyle : inputStyle}
                   />
+
+                  <button
+                    onClick={() =>
+                      setOpenTemplateIndex(openTemplateIndex === i ? null : i)
+                    }
+                    style={smallGhostBtn}
+                  >
+                    {openTemplateIndex === i
+                      ? "Inspiration ausblenden"
+                      : "Inspiration anzeigen"}
+                  </button>
+
+                  {openTemplateIndex === i && (
+                    <div style={templateBoxStyle}>
+                      {QUESTION_TEMPLATES.map((template, tIndex) => (
+                        <div
+                          key={`${template}-${tIndex}`}
+                          onClick={() => {
+                            setQuestionText(i, template);
+                            setOpenTemplateIndex(null);
+                          }}
+                          style={templateItemStyle}
+                        >
+                          {template}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
@@ -688,19 +844,19 @@ export default function Page() {
                 Schick dein Quiz jetzt an Freunde
               </h2>
               <p style={{ fontSize: 18, marginTop: 0, marginBottom: 10 }}>
-                Deine Freunde bekommen eine kurze Challenge und können sofort testen,
+                Deine Freunde bekommen einen Link und können sofort testen,
                 wie gut sie dich wirklich kennen.
               </p>
               <p style={{ fontSize: 16, opacity: 0.85, marginTop: 0 }}>
-                Dauert nur ca. 20 Sekunden. Je einfacher du es jetzt verschickst,
-                desto eher spielen sie es direkt.
+                Dauert nur ca. 20 Sekunden. Je schneller du den Link jetzt verschickst,
+                desto eher spielen sie direkt.
               </p>
 
               <div style={shareLinkBoxStyle}>{shareUrl}</div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={copyChallengeText} style={primaryBtn}>
-                  {copied ? "Gesendet vorbereitet" : "Quiz an Freunde senden"}
+                <button onClick={copyQuizLink} style={primaryBtn}>
+                  {copied ? "Kopiert" : "Link zum Quiz kopieren"}
                 </button>
                 <button onClick={shareWhatsApp} style={ghostBtn}>
                   WhatsApp
@@ -714,8 +870,8 @@ export default function Page() {
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0 }}>Selbst testen</h3>
               <p style={{ opacity: 0.85 }}>
-                Du kannst das Quiz auch direkt selbst starten und schauen, wie sich
-                der Flow für andere anfühlt.
+                Du kannst das Quiz auch direkt selbst starten und schauen, wie
+                sich der Flow für andere anfühlt.
               </p>
 
               <input
@@ -857,8 +1013,8 @@ export default function Page() {
               <button onClick={shareWhatsApp} style={primaryBtn}>
                 Freund herausfordern
               </button>
-              <button onClick={copyChallengeText} style={ghostBtn}>
-                {copied ? "Gesendet vorbereitet" : "Quiz an Freunde senden"}
+              <button onClick={copyQuizLink} style={ghostBtn}>
+                {copied ? "Kopiert" : "Link zum Quiz kopieren"}
               </button>
               <button onClick={openDashboard} style={ghostBtn}>
                 Statistik
